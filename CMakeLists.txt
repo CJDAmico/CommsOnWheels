@@ -17,7 +17,15 @@ set(PROJECT_SOURCES
     mainwindow.cpp
     mainwindow.h
     mainwindow.ui
+    convert.py
 )
+
+# Create a JSON output folder in the project build
+set(JSON_OUTPUTS ${CMAKE_BINARY_DIR}/JSON)
+file(MAKE_DIRECTORY ${JSON_OUTPUTS})
+
+# Update build target for convert.py when the source changes
+configure_file(${CMAKE_SOURCE_DIR}/convert.py ${CMAKE_BINARY_DIR}/convert.py COPYONLY)
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(HeavyInsight

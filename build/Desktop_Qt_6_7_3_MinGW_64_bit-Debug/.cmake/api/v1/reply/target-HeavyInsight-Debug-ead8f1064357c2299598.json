@@ -51,7 +51,7 @@
 			{
 				"command" : 3,
 				"file" : 1,
-				"line" : 23,
+				"line" : 31,
 				"parent" : 0
 			},
 			{
@@ -75,13 +75,13 @@
 			{
 				"command" : 4,
 				"file" : 1,
-				"line" : 57,
+				"line" : 65,
 				"parent" : 0
 			},
 			{
 				"command" : 5,
 				"file" : 1,
-				"line" : 42,
+				"line" : 50,
 				"parent" : 0
 			},
 			{
@@ -365,8 +365,8 @@
 				0,
 				1,
 				2,
-				6,
-				10
+				7,
+				11
 			]
 		}
 	],
@@ -490,8 +490,8 @@
 				0,
 				1,
 				2,
-				6,
-				10
+				7,
+				11
 			]
 		},
 		{
@@ -499,8 +499,8 @@
 			"sourceIndexes" : 
 			[
 				3,
-				5,
-				8
+				6,
+				9
 			]
 		},
 		{
@@ -508,16 +508,17 @@
 			"sourceIndexes" : 
 			[
 				4,
-				7,
-				9
+				5,
+				8,
+				10
 			]
 		},
 		{
 			"name" : "CMake Rules",
 			"sourceIndexes" : 
 			[
-				11,
-				12
+				12,
+				13
 			]
 		}
 	],
@@ -550,6 +551,11 @@
 		{
 			"backtrace" : 4,
 			"path" : "mainwindow.ui",
+			"sourceGroupIndex" : 2
+		},
+		{
+			"backtrace" : 4,
+			"path" : "convert.py",
 			"sourceGroupIndex" : 2
 		},
 		{

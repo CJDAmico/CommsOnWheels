@@ -743,7 +743,7 @@ C:/Users/onurk/Desktop/Oshkosh/HeavyInsight/mainwindow.h
  mdp:C:/Qt/Tools/mingw1120_64/x86_64-w64-mingw32/include/wchar.h
  mdp:C:/Users/onurk/Desktop/Oshkosh/HeavyInsight/build/Desktop_Qt_6_7_3_MinGW_64_bit-Debug/HeavyInsight_autogen/moc_predefs.h
  mdp:C:/Users/onurk/Desktop/Oshkosh/HeavyInsight/mainwindow.h
-C:/Users/onurk/Desktop/Oshkosh/HeavyInsight/dbctree.cpp
 C:/Users/onurk/Desktop/Oshkosh/HeavyInsight/main.cpp
+C:/Users/onurk/Desktop/Oshkosh/HeavyInsight/dbctree.cpp
 C:/Users/onurk/Desktop/Oshkosh/HeavyInsight/mainwindow.cpp
  uic:./ui_mainwindow.h

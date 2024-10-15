@@ -17,6 +17,9 @@
 #include <QListWidget>
 #include <QSplitter>
 #include <QStyleFactory>
+#include <QProcess>
+#include <QFileDialog>
+#include <QDir>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
     // Window Icon
@@ -40,8 +43,24 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     fileMenu->addAction(exitAction);
     // Connect File Actions
     connect(openAction, &QAction::triggered, this, []() {
-        // TODO: Enable importing DBC files
-        QMessageBox::information(nullptr, "Open", "Open File clicked!");
+        QString selectedFile = QFileDialog::getOpenFileName(
+            nullptr,
+            "Open DBC File",
+            QDir::homePath(),
+            "DBC Files (*.dbc)"
+            );
+        if (!selectedFile.isEmpty()) {
+            // Inform the user which file was selected
+            QMessageBox::information(nullptr, "Import Successful", "DBC File Imported:\n" + selectedFile);
+
+            // Run Python Script to Convert DBC to JSON
+            QProcess process;
+            QStringList scriptParameters;
+            scriptParameters << QCoreApplication::applicationDirPath() + "/convert.py ";
+            scriptParameters << selectedFile;
+            process.start("python", scriptParameters);
+            process.waitForFinished();
+        }
     });
     connect(exitAction, &QAction::triggered, this, &MainWindow::close);
 
