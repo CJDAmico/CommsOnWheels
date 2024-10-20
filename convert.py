@@ -1,5 +1,5 @@
 import json
-import re  # Regular expressions for better parsing
+import re
 
 def parse_dbc_file(dbc_file_path):
     db_dict = {
@@ -120,8 +120,8 @@ def parse_dbc_file(dbc_file_path):
     return db_dict
 
 # Path to the DBC file and output JSON file
-dbc_file_path = 'Sample Files\\J1939 DBC\\Weird.dbc'  # Update with your file path
-json_file_path = 'Sample Files\\JSON\\output.json'  # Update with your desired output path
+dbc_file_path = 'Sample Files\\J1939 DBC\\weird.dbc'  # Update with your file path
+json_file_path = 'Sample Files\\JSON\\weird.json'  # Update with your desired output path
 
 # Parse the DBC file and convert to JSON
 db_dict = parse_dbc_file(dbc_file_path)
