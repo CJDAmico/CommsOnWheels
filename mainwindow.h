@@ -3,6 +3,14 @@
 
 #include <QMainWindow>
 #include <QTableWidget>
+#include "dbcdata.h"
+#include "dbctree.h"
+#include <QFormLayout>
+#include <QSpinBox>
+#include <QCheckBox>
+#include <QListWidget>
+#include <QSplitter>
+#include <QLineEdit>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -18,13 +26,80 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
+private slots:
+    void onTreeItemClicked(QTreeWidgetItem* item, int column);
+
+    // Handle selection of node types to open tabs
+    void handleMessageItem(QTreeWidgetItem* item);
+    void handleTxMessageItem(QTreeWidgetItem* item);
+    void handleRxMessageItem(QTreeWidgetItem* item);
+    void handleSignalItem(QTreeWidgetItem* item);
+    void handleBusItem(QTreeWidgetItem* item);
+    void handleNodeItem(QTreeWidgetItem* item);
+
 private:
     Ui::MainWindow *ui;
+    QList<DbcDataModel*> dbcModels;
+    DbcTree* dbcTree;
 
     void addAttributeRow(QTableWidget *table, const QStringList &rowData);
     void toggleDarkMode();
     QAction *styleMode;
     QPalette defaultPalette;
     QString defaultStyleSheet;
+
+
+    void updateDbcTree();
+    void setupRightPanel();
+    void clearRightPanel();
+
+
+    // Left and Right Tab Splitter
+    QSplitter *splitter;
+
+    // Right panel widgets
+    QTabWidget *rightPanel;
+
+    // Tabs
+    QWidget *definitionTab;
+    QWidget *busTab;
+    QWidget *nodeTab;
+    QWidget *signalTab;
+
+    // Widgets for Definition Tab (used for Message)
+    QFormLayout *definitionFormLayout;
+    QLineEdit *pgnLineEdit;
+    QLineEdit *nameLineEdit;
+    QLineEdit *descLineEdit;
+    QSpinBox *prioritySpinBox;
+    QSpinBox *lengthSpinBox;
+    QCheckBox *extendedDataPageCheckBox;
+    QCheckBox *dataPageCheckBox;
+    QTableWidget *attributesTable;
+    QListWidget *signalsList;
+
+    // Widgets for Bus Tab
+    QFormLayout *busFormLayout;
+    QLineEdit *busNameLineEdit;
+    QLineEdit *baudRateLineEdit;
+
+    // Widgets for Node Tab
+    QFormLayout *nodeFormLayout;
+    QLineEdit *nodeNameLineEdit;
+    // ... other node-specific widgets
+
+    // Widgets for Signal Tab
+    QFormLayout *signalFormLayout;
+    QSpinBox *spnSpinBox;
+    QLineEdit *signalNameLineEdit;
+    QLineEdit *signalDescLineEdit;
+    QSpinBox *startBitSpinBox;
+    QSpinBox *bitLengthSpinBox;
+    QCheckBox *isBigEndianCheckBox;
+    QCheckBox *isTwosComplementCheckBox;
+    QDoubleSpinBox *factorSpinBox;
+    QDoubleSpinBox *offsetSpinBox;
+    QLineEdit *unitsLineEdit;
+    QTableWidget *enumerationsTable;
 };
 #endif // MAINWINDOW_H
