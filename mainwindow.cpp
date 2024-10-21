@@ -45,19 +45,62 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     QMenu *fileMenu = menuBar->addMenu("File");
 
     // File Actions
-    QAction *importAction = new QAction("Import DBC", this);
-    QAction *exitAction = new QAction("Exit", this);
-    fileMenu->addAction(importAction);
-    fileMenu->addAction(exitAction);
+    QAction *newJson = new QAction("New File", this);
+    fileMenu->addAction(newJson);
+    connect(newJson, &QAction::triggered, this, [this](){
+        dbcModels.clear();
+        updateDbcTree();
+    });
+
+    QAction *openJson = new QAction("Import JSON...", this);
+    fileMenu->addAction(openJson);
     // Connect File Actions
-    connect(importAction, &QAction::triggered, this, [this]() {
+    connect(openJson, &QAction::triggered, this, [this]() {
         QSettings settings("Oshkosh", "HeavyInsight");
 
         QString lastDir = settings.value("lastWorkingDir", QDir::currentPath()).toString();
 
         QString selectedFile = QFileDialog::getOpenFileName(
             nullptr,
-            "Open DBC File",
+            "Open JSON File",
+            lastDir,
+            "JSON Files (*.json)"
+            );
+        if (!selectedFile.isEmpty()) {
+            // Store last directory used
+            QFileInfo fileInfo(selectedFile);
+            QString selectedDir = fileInfo.absolutePath();
+            settings.setValue("lastWorkingDir", selectedDir);
+
+            QString jsonFileName = fileInfo.completeBaseName() + ".json";
+            QString jsonFilePath = QDir(QDir::currentPath() + "/JSON/").filePath(jsonFileName);
+
+            // Load the JSON file into the data model
+            DbcDataModel* newModel = new DbcDataModel();
+            newModel->setFileName(fileInfo.fileName());
+            if (newModel->loadJson(jsonFilePath)) {
+                dbcModels.append(newModel);
+                updateDbcTree();
+            } else {
+                QMessageBox::warning(this, "Import Error", "Failed to import JSON file.");
+                delete newModel;
+            }
+
+            // Inform the user the open was succesful
+            QMessageBox::information(this, "Import Successful", "JSON File Imported:\n" + selectedFile);
+        }
+    });
+
+    QAction *importDBC = new QAction("Import DBC...", this);
+    fileMenu->addAction(importDBC);
+    connect(importDBC, &QAction::triggered, this, [this]() {
+        QSettings settings("Oshkosh", "HeavyInsight");
+
+        QString lastDir = settings.value("lastWorkingDir", QDir::currentPath()).toString();
+
+        QString selectedFile = QFileDialog::getOpenFileName(
+            nullptr,
+            "Import DBC File",
             lastDir,
             "DBC Files (*.dbc)"
             );
@@ -67,35 +110,86 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
             QString selectedDir = fileInfo.absolutePath();
             settings.setValue("lastWorkingDir", selectedDir);
 
-            // Convert DBC to JSON
-            // TODO: Add error handling
-            QProcess process;
-            QStringList scriptParameters;
-            scriptParameters << QDir::currentPath() + "/convert.py";
-            scriptParameters << QDir::currentPath();
-            scriptParameters << selectedFile;
-            process.start("python", scriptParameters);
-            process.waitForFinished();
-
-            QString jsonFileName = fileInfo.completeBaseName() + ".json";
-            QString jsonFilePath = QDir(QDir::currentPath() + "/JSON/").filePath(jsonFileName);
-
-            // Load the JSON file into the data model
+            // Import the DBC file into the data model
             DbcDataModel* newModel = new DbcDataModel();
             newModel->setFileName(fileInfo.fileName());
-            if (newModel->loadFromFile(jsonFilePath)) {
+
+            // TODO: Implement importDBC() in DbcDataModel
+            if (newModel->importDBC(selectedFile)) { // Pass the selected DBC file path
                 dbcModels.append(newModel);
                 updateDbcTree();
+
+                // Inform the user the import was successful
+                QMessageBox::information(this, "Import Successful", "DBC File Imported:\n" + selectedFile);
             } else {
-                QMessageBox::warning(this, "Import Error", "Failed to import JSON file.");
+                QMessageBox::warning(this, "Import Error", "Failed to import DBC file.");
                 delete newModel;
             }
-
-            // Inform the user the import was succesful
-            QMessageBox::information(this, "Import Successful", "DBC File Imported:\n" + selectedFile);
         }
     });
+
+    QAction *save = new QAction("Save", this);
+    QAction *saveAs = new QAction("Save As...", this);
+    fileMenu->addAction(save);
+    fileMenu->addAction(saveAs);
+
+    connect(save, &QAction::triggered, this, [this]() {
+        // Define the JSON directory path
+        QString jsonDirPath = "./JSON";
+
+        // Ensure the JSON directory exists
+        QDir jsonDir;
+        if (!jsonDir.exists(jsonDirPath)) {
+            jsonDir.mkpath(jsonDirPath);
+        }
+
+        // Generate a unique default file name (e.g., based on current timestamp)
+        QString defaultFileName = QString("DbcData_%1.json")
+                                      .arg(QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss"));
+
+        // Construct the full file path
+        QString filePath = jsonDirPath + "/" + defaultFileName;
+
+        // TODO: Convert the current list of DbcDataModels into a single JSON
+        // QJsonDocument jsonDoc; // Placeholder for the JSON document
+
+        // TODO: Save the JSON document to the specified file path
+        // Example:
+        // QFile file(filePath);
+        // if (file.open(QIODevice::WriteOnly)) {
+        //     file.write(jsonDoc.toJson());
+        //     file.close();
+        // }
+    });
+
+    connect(saveAs, &QAction::triggered, this, [this]() {
+        // Open a QFileDialog to let the user select the save location and file name
+        QString selectedFilePath = QFileDialog::getSaveFileName(
+            this,
+            tr("Save DBC Data As"),
+            "./JSON/DbcData.json", // Default file name and directory
+            tr("JSON Files (*.json);;All Files (*)")
+            );
+
+        // Check if the user selected a file
+        if (!selectedFilePath.isEmpty()) {
+            // TODO: Convert the current list of DbcDataModels into a single JSON
+            // QJsonDocument jsonDoc; // Placeholder for the JSON document
+
+            // TODO: Save the JSON document to the selected file path
+            // Example:
+            // QFile file(selectedFilePath);
+            // if (file.open(QIODevice::WriteOnly)) {
+            //     file.write(jsonDoc.toJson());
+            //     file.close();
+            // }
+        }
+    });
+
+
+    QAction *exitAction = new QAction("Exit", this);
     connect(exitAction, &QAction::triggered, this, &MainWindow::close);
+    fileMenu->addAction(exitAction);
 
     // Edit Menu
     QMenu *editMenu = menuBar->addMenu("Edit");
@@ -103,6 +197,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     // Edit Actions
     QAction *undoAction = new QAction("Undo", this);
     QAction *redoAction = new QAction("Redo", this);
+    // TODO: Take snapshots of the data before and after any change so that the user can undo or redo
     editMenu->addAction(undoAction);
     editMenu->addAction(redoAction);
 
@@ -110,6 +205,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     QMenu *viewMenu = menuBar->addMenu("View");
 
     // View Actions
+    // TODO: Look into these modes
     QAction *hexadecimalMode = new QAction("Hexadecimal", this);
     QAction *binaryMode = new QAction("Binary", this);
     QAction *decimalMode = new QAction("Decimal", this);
@@ -121,6 +217,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect(styleMode, &QAction::triggered, this, &MainWindow::toggleDarkMode);  // Connect the button to the toggleDarkMode function
 
     // Help Menu
+    // TODO: Create a documentation/guide
     QMenu *helpMenu = menuBar->addMenu("Help");
     QAction *guide = new QAction("Guide", this);
     helpMenu->addAction(guide);
@@ -235,35 +332,33 @@ void MainWindow::onTreeItemClicked(QTreeWidgetItem* item, int column)
 {
     if (!item) return;
 
-    QString itemType = item->data(0, Qt::UserRole + 1).toString();
+    QString itemType = item->data(0, Qt::UserRole).toString();
+    QString name = item->text(0);
+    QStringList models = item->data(0, Qt::UserRole + 1).toStringList();
 
     // Clear existing tabs
     clearRightPanel();
 
-    if (itemType == "Message") {
-        handleMessageItem(item);
-    }
-    else if (itemType == "TxMessage") {
-        handleTxMessageItem(item);
-    }
-    else if (itemType == "RxMessage") {
-        handleRxMessageItem(item);
+    if (itemType == "Message" || itemType == "TxMessage" || itemType == "RxMessage") {
+        handleMessageItem(item, name, models);
     }
     else if (itemType == "Signal") {
-        handleSignalItem(item);
+        handleSignalItem(item, name, models);
     }
     else if (itemType == "Bus") {
-        handleBusItem(item);
+        handleBusItem(item, name, models);
     }
-    else if (itemType == "Node") {
-        handleNodeItem(item);
+    else if (itemType == "ECU") {
+        handleECUItem(item, name, models);
+    }
+    else if(itemType == "NodeBus") {
+        // TODO: Show Bus info?
     }
     else {
-        // Optionally handle other types or do nothing
         QMessageBox::information(this, "Info", "Please select a valid item.");
     }
 
-    // When the right panel opens, equalize its width with the left panel
+    // Adjust splitter if needed
     splitter->setStretchFactor(0, 1);
     splitter->setStretchFactor(1, 1);
     splitter->updateGeometry();
@@ -276,14 +371,16 @@ void MainWindow::onTreeItemClicked(QTreeWidgetItem* item, int column)
     }
 }
 
-void MainWindow::handleMessageItem(QTreeWidgetItem* item)
+void MainWindow::handleMessageItem(QTreeWidgetItem* item, const QString& name, const QStringList& models)
 {
-    QString messageName = item->data(0, Qt::UserRole).toString();
-    QString modelFileName = item->data(0, Qt::UserRole + 2).toString();
+    if (models.isEmpty()) {
+        QMessageBox::warning(this, "Error", "No associated models found for this message.");
+        return;
+    }
 
-    // Find the model by file name
+    QString modelFileName = models.first();
     DbcDataModel* model = nullptr;
-    for (DbcDataModel* m : dbcModels) { // Assuming dbcModels is a member variable holding loaded models
+    for (DbcDataModel* m : dbcModels) {
         if (m->fileName() == modelFileName) {
             model = m;
             break;
@@ -295,12 +392,21 @@ void MainWindow::handleMessageItem(QTreeWidgetItem* item)
         return;
     }
 
-    // Find the message in the model
-    Message* message = nullptr;
-    for (Message& msg : model->messages()) {
-        if (msg.name == messageName) {
-            message = &msg;
-            break;
+    QString itemType = item->data(0, Qt::UserRole).toString();
+    const Message* message = nullptr;
+    QString txRxType; // "Transmitted" or "Received"
+
+    // Directly search for the message by the item's own name
+    if (itemType == "Message" || itemType == "TxMessage" || itemType == "RxMessage") {
+        if (itemType == "TxMessage" || itemType == "RxMessage") {
+            txRxType = (itemType == "TxMessage") ? "Transmitted" : "Received";
+        }
+
+        for (const Message& msg : model->messages()) {
+            if (msg.name.trimmed().compare(name.trimmed(), Qt::CaseInsensitive) == 0) {
+                message = &msg;
+                break;
+            }
         }
     }
 
@@ -309,18 +415,16 @@ void MainWindow::handleMessageItem(QTreeWidgetItem* item)
         return;
     }
 
-    // Show the Definition tab for Messages
-    if (rightPanel->indexOf(definitionTab) == -1) {
-        rightPanel->addTab(definitionTab, "Definition");
-    }
-
-    // Populate Definition tab with message data
+    // Populate Definition tab
     pgnLineEdit->setText(QString::number(message->pgn));
-    nameLineEdit->setText(message->name);
+    QString displayName = message->name;
+    if (!txRxType.isEmpty()) {
+        displayName += QString(" (%1)").arg(txRxType); // e.g., "Message1 (Transmitted)"
+    }
+    nameLineEdit->setText(displayName);
     descLineEdit->setText(message->description);
     prioritySpinBox->setValue(message->priority);
     lengthSpinBox->setValue(message->length);
-    // TODO: Initial data page?
     extendedDataPageCheckBox->setChecked(false);
     dataPageCheckBox->setChecked(false);
 
@@ -335,27 +439,22 @@ void MainWindow::handleMessageItem(QTreeWidgetItem* item)
         signalsList->addItem(signal.name);
     }
 
-    // Set the active tab
+    // Show the Definition tab
+    if (rightPanel->indexOf(definitionTab) == -1) {
+        rightPanel->addTab(definitionTab, "Definition");
+    }
+
     rightPanel->setCurrentWidget(definitionTab);
 }
 
-// Handler: Signal Items
-void MainWindow::handleSignalItem(QTreeWidgetItem* item)
+void MainWindow::handleSignalItem(QTreeWidgetItem* item, const QString& name, const QStringList& models)
 {
-    QString signalName = item->data(0, Qt::UserRole).toString();
-    QString modelFileName = item->data(0, Qt::UserRole + 2).toString();
-    QString messageName;
-
-    // Retrieve the parent message name
-    QTreeWidgetItem* parentItem = item->parent();
-    if (parentItem) {
-        messageName = parentItem->data(0, Qt::UserRole).toString();
-    } else {
-        QMessageBox::warning(this, "Error", "Parent message not found.");
+    if (models.isEmpty()) {
+        QMessageBox::warning(this, "Error", "No associated models found for this signal.");
         return;
     }
 
-    // Find the model by file name
+    QString modelFileName = models.first();
     DbcDataModel* model = nullptr;
     for (DbcDataModel* m : dbcModels) {
         if (m->fileName() == modelFileName) {
@@ -369,9 +468,16 @@ void MainWindow::handleSignalItem(QTreeWidgetItem* item)
         return;
     }
 
-    // Find the message in the model
-    Message* message = nullptr;
-    for (Message& msg : model->messages()) {
+    // Find parent message
+    QTreeWidgetItem* parentItem = item->parent();
+    if (!parentItem) {
+        QMessageBox::warning(this, "Error", "Parent message not found.");
+        return;
+    }
+    QString messageName = parentItem->text(0);
+
+    const Message* message = nullptr;
+    for (const Message& msg : model->messages()) {
         if (msg.name == messageName) {
             message = &msg;
             break;
@@ -379,14 +485,13 @@ void MainWindow::handleSignalItem(QTreeWidgetItem* item)
     }
 
     if (!message) {
-        QMessageBox::warning(this, "Error", "Message not found in the model.");
+        QMessageBox::warning(this, "Error", "Parent message not found in the model.");
         return;
     }
 
-    // Find the signal in the message
-    Signal* signal = nullptr;
-    for (Signal& sig : message->data) {
-        if (sig.name == signalName) {
+    const Signal* signal = nullptr;
+    for (const Signal& sig : message->data) {
+        if (sig.name == name) {
             signal = &sig;
             break;
         }
@@ -397,12 +502,7 @@ void MainWindow::handleSignalItem(QTreeWidgetItem* item)
         return;
     }
 
-    // Show the Signal tab
-    if (rightPanel->indexOf(signalTab) == -1) {
-        rightPanel->addTab(signalTab, "Signal");
-    }
-
-    // Populate Signal tab with signal data
+    // Populate Signal tab
     spnSpinBox->setValue(signal->spn);
     signalNameLineEdit->setText(signal->name);
     signalDescLineEdit->setText(signal->description);
@@ -416,23 +516,35 @@ void MainWindow::handleSignalItem(QTreeWidgetItem* item)
 
     // Update enumerations table
     enumerationsTable->setRowCount(0);
-    for (const Enumeration& enumValue : signal->enumerations) {
+    for (const Enumeration& enumVal : signal->enumerations) {
         int row = enumerationsTable->rowCount();
         enumerationsTable->insertRow(row);
-        enumerationsTable->setItem(row, 0, new QTableWidgetItem(enumValue.name));
-        enumerationsTable->setItem(row, 1, new QTableWidgetItem(enumValue.description));
-        enumerationsTable->setItem(row, 2, new QTableWidgetItem(QString::number(enumValue.value)));
+        enumerationsTable->setItem(row, 0, new QTableWidgetItem(enumVal.name));
+        enumerationsTable->setItem(row, 1, new QTableWidgetItem(enumVal.description));
+        enumerationsTable->setItem(row, 2, new QTableWidgetItem(QString::number(enumVal.value)));
     }
 
-    // Set the active tab
+    // Show the Signal tab
+    if (rightPanel->indexOf(signalTab) == -1) {
+        rightPanel->addTab(signalTab, "Signal");
+    }
+
     rightPanel->setCurrentWidget(signalTab);
 }
 
 // Handler: Bus Items
-void MainWindow::handleBusItem(QTreeWidgetItem* item)
+void MainWindow::handleBusItem(QTreeWidgetItem* item, const QString& name, const QStringList& models)
 {
-    QString busName = item->data(0, Qt::UserRole).toString();
-    QString modelFileName = item->data(0, Qt::UserRole + 2).toString();
+    // Assuming you have only one model for simplicity
+    // If multiple models, decide how to display or aggregate data
+
+    if (models.isEmpty()) {
+        QMessageBox::warning(this, "Error", "No associated models found for this bus.");
+        return;
+    }
+
+    // For demonstration, use the first model
+    QString modelFileName = models.first();
 
     // Find the model by file name
     DbcDataModel* model = nullptr;
@@ -449,9 +561,9 @@ void MainWindow::handleBusItem(QTreeWidgetItem* item)
     }
 
     // Find the bus in the model
-    Bus* bus = nullptr;
-    for (Bus& b : model->buses()) {
-        if (b.name == busName) {
+    const Bus* bus = nullptr;
+    for (const Bus& b : model->buses()) {
+        if (b.name == name) {
             bus = &b;
             break;
         }
@@ -462,89 +574,28 @@ void MainWindow::handleBusItem(QTreeWidgetItem* item)
         return;
     }
 
+    // Populate Bus tab with bus data
+    busNameLineEdit->setText(bus->name);
+    baudRateLineEdit->setText(bus->baud);
+
     // Show the Bus tab
     if (rightPanel->indexOf(busTab) == -1) {
         rightPanel->addTab(busTab, "Bus");
     }
 
-    // Populate Bus tab with bus data
-    busNameLineEdit->setText(bus->name);
-    baudRateLineEdit->setText(bus->baud);
-
-    // Set the active tab
     rightPanel->setCurrentWidget(busTab);
 }
 
-// Handler: Node Items
-void MainWindow::handleNodeItem(QTreeWidgetItem* item)
+
+// Handler: ECU Items
+void MainWindow::handleECUItem(QTreeWidgetItem* item, const QString& name, const QStringList& models)
 {
-    QString nodeName = item->data(0, Qt::UserRole).toString();
-    QVariant variant = item->data(0, Qt::UserRole + 2);
-    QStringList modelFileNames;
-
-    if (variant.canConvert<QStringList>()) {
-        modelFileNames = variant.toStringList();
-    }
-    else if (variant.canConvert<QString>()) {
-        modelFileNames << variant.toString();
-    }
-
-    if (modelFileNames.isEmpty()) {
-        QMessageBox::warning(this, "Error", "No associated models found for this node.");
+    if (models.isEmpty()) {
+        QMessageBox::warning(this, "Error", "No associated models found for this ECU.");
         return;
     }
 
-    // For simplicity, we'll display data from the first associated model
-    // You can modify this to handle multiple models as needed
-
-    DbcDataModel* model = nullptr;
-    for (const QString& modelFileName : modelFileNames) {
-        for (DbcDataModel* m : dbcModels) {
-            if (m->fileName() == modelFileName) {
-                model = m;
-                break;
-            }
-        }
-        if (model) break;
-    }
-
-    if (!model) {
-        QMessageBox::warning(this, "Error", "Model not found.");
-        return;
-    }
-
-    // Find the node in the model
-    Node* node = nullptr;
-    for (Node& n : model->nodes()) {
-        if (n.name == nodeName) {
-            node = &n;
-            break;
-        }
-    }
-
-    if (!node) {
-        QMessageBox::warning(this, "Error", "Node not found in the model.");
-        return;
-    }
-
-    // Show the Node tab
-    if (rightPanel->indexOf(nodeTab) == -1) {
-        rightPanel->addTab(nodeTab, "Node");
-    }
-
-    // Populate Node tab with node data
-    nodeNameLineEdit->setText(node->name);
-    // Populate other node-specific widgets as needed
-
-    // Set the active tab
-    rightPanel->setCurrentWidget(nodeTab);
-}
-
-// Handler: Transmitted Messages under NodeBus
-void MainWindow::handleTxMessageItem(QTreeWidgetItem* item)
-{
-    QString txMessageName = item->data(0, Qt::UserRole).toString();
-    QString modelFileName = item->data(0, Qt::UserRole + 2).toString();
+    QString modelFileName = models.first();
 
     // Find the model by file name
     DbcDataModel* model = nullptr;
@@ -560,113 +611,29 @@ void MainWindow::handleTxMessageItem(QTreeWidgetItem* item)
         return;
     }
 
-    // Find the message in the model
-    Message* message = nullptr;
-    for (Message& msg : model->messages()) {
-        if (msg.name == txMessageName) {
-            message = &msg;
+    // Find the ECU in the model
+    const ECU* ecu = nullptr;
+    for (const ECU& n : model->ecus()) {
+        if (n.name == name) {
+            ecu = &n;
             break;
         }
     }
 
-    if (!message) {
-        QMessageBox::warning(this, "Error", "Transmitted Message not found in the model.");
+    if (!ecu) {
+        QMessageBox::warning(this, "Error", "ECU not found in the model.");
         return;
     }
 
-    // Show the Definition tab for Messages
-    if (rightPanel->indexOf(definitionTab) == -1) {
-        rightPanel->addTab(definitionTab, "Definition");
+    // Populate ECU tab
+    ecuNameLineEdit->setText(ecu->name);
+
+    // Show the ECU tab
+    if (rightPanel->indexOf(ecuTab) == -1) {
+        rightPanel->addTab(ecuTab, "ECU");
     }
 
-    // Populate Definition tab with message data
-    pgnLineEdit->setText(QString::number(message->pgn));
-    nameLineEdit->setText(message->name);
-    descLineEdit->setText(message->description);
-    prioritySpinBox->setValue(message->priority);
-    lengthSpinBox->setValue(message->length);
-    // TODO: Initial data page?
-    extendedDataPageCheckBox->setChecked(false);
-    dataPageCheckBox->setChecked(false);
-
-    // Update attributes table
-    attributesTable->setRowCount(0);
-    addAttributeRow(attributesTable, {"TxPeriodicity", "Integer", QString::number(message->txPeriodicity)});
-    addAttributeRow(attributesTable, {"TxOnChange", "Bool", message->txOnChange ? "True" : "False"});
-
-    // Update signals list
-    signalsList->clear();
-    for (const Signal& signal : message->data) {
-        signalsList->addItem(signal.name);
-    }
-
-    // Set the active tab
-    rightPanel->setCurrentWidget(definitionTab);
-}
-
-void MainWindow::handleRxMessageItem(QTreeWidgetItem* item)
-{
-    QString rxMessageName = item->data(0, Qt::UserRole).toString();
-    QString modelFileName = item->data(0, Qt::UserRole + 2).toString();
-
-    qDebug() << "Clicked Received Message:" << rxMessageName << "Model File:" << modelFileName;
-
-    // Find the model by file name
-    DbcDataModel* model = nullptr;
-    for (DbcDataModel* m : dbcModels) {
-        if (m->fileName() == modelFileName) {
-            model = m;
-            break;
-        }
-    }
-
-    if (!model) {
-        QMessageBox::warning(this, "Error", QString("Model '%1' not found.").arg(modelFileName));
-        return;
-    }
-
-    // Find the message in the model
-    Message* message = nullptr;
-    for (Message& msg : model->messages()) {
-        if (msg.name == rxMessageName) {
-            message = &msg;
-            break;
-        }
-    }
-
-    if (!message) {
-        QMessageBox::warning(this, "Error", QString("Received Message '%1' not found in the model '%2'.")
-                                 .arg(rxMessageName, modelFileName));
-        return;
-    }
-
-    // Show the Definition tab for Messages
-    if (rightPanel->indexOf(definitionTab) == -1) {
-        rightPanel->addTab(definitionTab, "Definition");
-    }
-
-    // Populate Definition tab with message data
-    pgnLineEdit->setText(QString::number(message->pgn));
-    nameLineEdit->setText(message->name);
-    descLineEdit->setText(message->description);
-    prioritySpinBox->setValue(message->priority);
-    lengthSpinBox->setValue(message->length);
-    extendedDataPageCheckBox->setChecked(false);
-    dataPageCheckBox->setChecked(false);
-
-    // Update attributes table
-    attributesTable->setRowCount(0);
-    addAttributeRow(attributesTable, {"TxPeriodicity", "Integer", QString::number(message->txPeriodicity)});
-    addAttributeRow(attributesTable, {"TxOnChange", "Bool", message->txOnChange ? "True" : "False"});
-
-    // Update signals list
-    signalsList->clear();
-    for (const Signal& signal : message->data) {
-        signalsList->addItem(signal.name);
-    }
-
-    // Set the active tab
-    rightPanel->setCurrentWidget(definitionTab);
+    rightPanel->setCurrentWidget(ecuTab);
 }
 
 
@@ -717,12 +684,12 @@ void MainWindow::setupRightPanel()
     busFormLayout->addRow("Baud Rate:", baudRateLineEdit);
     busTab->setLayout(busFormLayout);
 
-    // Node Tab
-    nodeTab = new QWidget;
-    nodeFormLayout = new QFormLayout;
-    nodeNameLineEdit = new QLineEdit;
-    nodeFormLayout->addRow("Node Name:", nodeNameLineEdit);
-    nodeTab->setLayout(nodeFormLayout);
+    // ECU Tab
+    ecuTab = new QWidget;
+    ecuFormLayout = new QFormLayout;
+    ecuNameLineEdit = new QLineEdit;
+    ecuFormLayout->addRow("ECU Name:", ecuNameLineEdit);
+    ecuTab->setLayout(ecuFormLayout);
 
     // Signal Tab
     signalTab = new QWidget;
@@ -762,12 +729,14 @@ void MainWindow::setupRightPanel()
     rightPanel->addTab(busTab, "Bus");
     rightPanel->addTab(nodeTab, "Node");
     rightPanel->addTab(signalTab, "Signal");
+    rightPanel->addTab(ecuTab, "ECU"); // Add ECU Tab
 
     // Hide all tabs initially
     rightPanel->removeTab(rightPanel->indexOf(definitionTab));
     rightPanel->removeTab(rightPanel->indexOf(busTab));
     rightPanel->removeTab(rightPanel->indexOf(nodeTab));
     rightPanel->removeTab(rightPanel->indexOf(signalTab));
+    rightPanel->removeTab(rightPanel->indexOf(ecuTab)); // Hide ECU Tab initially
 }
 
 void MainWindow::clearRightPanel()
@@ -778,9 +747,9 @@ void MainWindow::clearRightPanel()
         rightPanel->removeTab(0);
     }
 
-    // Clear data from widgets
     // Definition Tab
     pgnLineEdit->setValidator(new QRegularExpressionValidator(QRegularExpression("\\d+"), this));
+    pgnLineEdit->clear();
     nameLineEdit->clear();
     descLineEdit->clear();
     prioritySpinBox->setValue(0);
@@ -790,12 +759,12 @@ void MainWindow::clearRightPanel()
     attributesTable->setRowCount(0);
     signalsList->clear();
 
+    // ECU Tab
+    ecuNameLineEdit->clear();
+
     // Bus Tab
     busNameLineEdit->clear();
     baudRateLineEdit->clear();
-
-    // Node Tab
-    nodeNameLineEdit->clear();
 
     // Signal Tab
     spnSpinBox->setValue(0);
@@ -809,6 +778,8 @@ void MainWindow::clearRightPanel()
     offsetSpinBox->setValue(0.0);
     unitsLineEdit->clear();
     enumerationsTable->setRowCount(0);
+
+
 }
 
 

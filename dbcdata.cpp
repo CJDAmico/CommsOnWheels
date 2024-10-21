@@ -18,7 +18,13 @@ QString DbcDataModel::fileName() const
     return m_fileName;
 }
 
-bool DbcDataModel::loadFromFile(const QString& filePath) {
+
+bool DbcDataModel::importDBC(const QString& filePath) {
+    // TODO: Implement parsing DBC and filling m_buses, m_messages, and m_ecus with a list of their corresponding classes (Look into parseJSON for example)
+    return false;
+}
+
+bool DbcDataModel::loadJson(const QString& filePath) {
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly)) {
         qWarning() << "Couldn't open JSON file:" << filePath;
@@ -43,7 +49,7 @@ void DbcDataModel::parseJson(const QJsonObject& jsonObject) {
     // Clear existing data
     m_buses.clear();
     m_messages.clear();
-    m_nodes.clear();
+    m_ecus.clear();
 
     // Parse buses
     QJsonArray busesArray = jsonObject.value("buses").toArray();
@@ -115,7 +121,7 @@ void DbcDataModel::parseJson(const QJsonObject& jsonObject) {
     QJsonArray nodesArray = jsonObject.value("nodes").toArray();
     for (const QJsonValue& value : nodesArray) {
         QJsonObject nodeObject = value.toObject();
-        Node node;
+        ECU node;
         node.name = nodeObject.value("name").toString();
 
         // Parse node buses
@@ -147,39 +153,7 @@ void DbcDataModel::parseJson(const QJsonObject& jsonObject) {
             node.buses.append(nodeBus);
         }
 
-        m_nodes.append(node);
-    }
-}
-
-void DbcDataModel::merge(const DbcDataModel& other) {
-    // Merge buses
-    for (const Bus& bus : other.m_buses) {
-        bool exists = std::any_of(m_buses.begin(), m_buses.end(), [&bus](const Bus& b) {
-            return b.name == bus.name;
-        });
-        if (!exists) {
-            m_buses.append(bus);
-        }
-    }
-
-    // Merge messages
-    for (const Message& message : other.m_messages) {
-        bool exists = std::any_of(m_messages.begin(), m_messages.end(), [&message](const Message& m) {
-            return m.name == message.name;
-        });
-        if (!exists) {
-            m_messages.append(message);
-        }
-    }
-
-    // Merge nodes
-    for (const Node& node : other.m_nodes) {
-        bool exists = std::any_of(m_nodes.begin(), m_nodes.end(), [&node](const Node& n) {
-            return n.name == node.name;
-        });
-        if (!exists) {
-            m_nodes.append(node);
-        }
+        m_ecus.append(node);
     }
 }
 
@@ -191,6 +165,6 @@ QList<Message> DbcDataModel::messages() const {
     return m_messages;
 }
 
-QList<Node> DbcDataModel::nodes() const {
-    return m_nodes;
+QList<ECU> DbcDataModel::ecus() const {
+    return m_ecus;
 }

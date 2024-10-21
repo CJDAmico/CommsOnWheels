@@ -30,12 +30,10 @@ private slots:
     void onTreeItemClicked(QTreeWidgetItem* item, int column);
 
     // Handle selection of node types to open tabs
-    void handleMessageItem(QTreeWidgetItem* item);
-    void handleTxMessageItem(QTreeWidgetItem* item);
-    void handleRxMessageItem(QTreeWidgetItem* item);
-    void handleSignalItem(QTreeWidgetItem* item);
-    void handleBusItem(QTreeWidgetItem* item);
-    void handleNodeItem(QTreeWidgetItem* item);
+    void handleMessageItem(QTreeWidgetItem* item, const QString& name, const QStringList& models);
+    void handleSignalItem(QTreeWidgetItem* item, const QString& name, const QStringList& models);
+    void handleBusItem(QTreeWidgetItem* item, const QString& name, const QStringList& models);
+    void handleECUItem(QTreeWidgetItem* item, const QString& name, const QStringList& models);
 
 private:
     Ui::MainWindow *ui;
@@ -83,10 +81,10 @@ private:
     QLineEdit *busNameLineEdit;
     QLineEdit *baudRateLineEdit;
 
-    // Widgets for Node Tab
-    QFormLayout *nodeFormLayout;
-    QLineEdit *nodeNameLineEdit;
-    // ... other node-specific widgets
+    // Widgets for ECU Tab
+    QWidget* ecuTab;
+    QFormLayout* ecuFormLayout;
+    QLineEdit* ecuNameLineEdit;
 
     // Widgets for Signal Tab
     QFormLayout *signalFormLayout;
@@ -101,5 +99,7 @@ private:
     QDoubleSpinBox *offsetSpinBox;
     QLineEdit *unitsLineEdit;
     QTableWidget *enumerationsTable;
+
+
 };
 #endif // MAINWINDOW_H

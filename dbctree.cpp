@@ -55,175 +55,148 @@ void DbcTree::dropEvent(QDropEvent *event) {
 
 void DbcTree::populateTree(const QList<DbcDataModel*>& models)
 {
-    // Clear existing items
     clear();
-    m_models = models;
 
-    // Map to track nodes by name
-    QMap<QString, QTreeWidgetItem*> nodeMap;
+    // Create unified top-level categories
+    QTreeWidgetItem* busesItem = new QTreeWidgetItem(this, QStringList("Buses"));
+    busesItem->setData(0, Qt::UserRole + 1, "Buses");
 
-    // Map to collect all node buses by node name
-    QMap<QString, QList<NodeBus>> nodeBusesMap;
+    QTreeWidgetItem* ecusItem = new QTreeWidgetItem(this, QStringList("ECUs"));
+    ecusItem->setData(0, Qt::UserRole + 1, "ECUs");
 
-    // For each model (DBC file), create a root node
+    QTreeWidgetItem* messagesItem = new QTreeWidgetItem(this, QStringList("Messages"));
+    messagesItem->setData(0, Qt::UserRole + 1, "Messages");
+
+    // Iterate through all models and aggregate data
     for (const DbcDataModel* model : models) {
-        QString rootName = model->fileName(); // Use the DBC file name as the root name
-        QTreeWidgetItem* rootItem = new QTreeWidgetItem(this);
-        rootItem->setText(0, rootName);
-        addTopLevelItem(rootItem);
+        QString modelName = model->fileName();
 
-        // Store the node type and model file name
-        rootItem->setData(0, Qt::UserRole + 1, "Root");
-        rootItem->setData(0, Qt::UserRole + 2, model->fileName());
-
-        // Buses
-        QTreeWidgetItem* busesItem = new QTreeWidgetItem(rootItem);
-        busesItem->setText(0, "Buses");
-        busesItem->setData(0, Qt::UserRole + 1, "Buses");
-
-        // Collect and sort buses
-        QList<Bus> buses = model->buses();
-        std::sort(buses.begin(), buses.end(), [](const Bus& a, const Bus& b) {
-            return a.name.toLower() < b.name.toLower();
-        });
-
-        for (const Bus& bus : buses) {
-            QTreeWidgetItem* busItem = new QTreeWidgetItem(busesItem);
-            busItem->setText(0, bus.name);
-            busItem->setData(0, Qt::UserRole, bus.name); // Store bus name
-            busItem->setData(0, Qt::UserRole + 1, "Bus");
-            busItem->setData(0, Qt::UserRole + 2, model->fileName());
-        }
-
-        // Nodes
-        QTreeWidgetItem* nodesItem = new QTreeWidgetItem(rootItem);
-        nodesItem->setText(0, "Nodes");
-        nodesItem->setData(0, Qt::UserRole + 1, "Nodes");
-
-        // Collect and sort nodes
-        QList<Node> nodes = model->nodes();
-        std::sort(nodes.begin(), nodes.end(), [](const Node& a, const Node& b) {
-            return a.name.toLower() < b.name.toLower();
-        });
-
-        for (const Node& node : nodes) {
-            QString nodeName = node.name;
-
-            // Ensure the node is in the nodeMap
-            QTreeWidgetItem* nodeItem;
-            if (nodeMap.contains(nodeName)) {
-                nodeItem = nodeMap[nodeName];
-                // Retrieve existing modelFileNames
-                QStringList existingModels = nodeItem->data(0, Qt::UserRole + 2).toStringList();
-                // Append the current model's file name if not already present
-                if (!existingModels.contains(model->fileName())) {
-                    existingModels.append(model->fileName());
-                    nodeItem->setData(0, Qt::UserRole + 2, existingModels);
+        // Populate Buses
+        for (const Bus& bus : model->buses()) {
+            // Check if bus already exists
+            QTreeWidgetItem* existingBus = nullptr;
+            for (int i = 0; i < busesItem->childCount(); ++i) {
+                QTreeWidgetItem* child = busesItem->child(i);
+                if (child->text(0) == bus.name) {
+                    existingBus = child;
+                    break;
                 }
-            } else {
-                nodeItem = new QTreeWidgetItem();
-                nodeItem->setText(0, nodeName);
-                nodeItem->setData(0, Qt::UserRole, nodeName);
-                nodeItem->setData(0, Qt::UserRole + 1, "Node");
-                nodeItem->setData(0, Qt::UserRole + 2, QStringList() << model->fileName()); // Initialize with current model
-                nodeMap[nodeName] = nodeItem;
             }
-
-            // Collect node buses
-            QList<NodeBus>& nodeBusesList = nodeBusesMap[nodeName];
-            nodeBusesList.append(node.buses);
-        }
-
-        // Add nodes and their sorted node buses to the tree
-        for (const QString& nodeName : nodeMap.keys()) {
-            QTreeWidgetItem* nodeItem = nodeMap[nodeName];
-            nodesItem->addChild(nodeItem); // Add nodeItem under "Nodes"
-
-            // Get the node buses and sort them
-            QList<NodeBus> nodeBusesList = nodeBusesMap[nodeName];
-            std::sort(nodeBusesList.begin(), nodeBusesList.end(), [](const NodeBus& a, const NodeBus& b) {
-                return a.name.toLower() < b.name.toLower();
-            });
-
-            // Add sorted node buses under the node
-            for (const NodeBus& nodeBus : nodeBusesList) {
-                QTreeWidgetItem* nodeBusItem = new QTreeWidgetItem(nodeItem);
-                nodeBusItem->setText(0, nodeBus.name);
-                nodeBusItem->setData(0, Qt::UserRole, nodeBus.name);
-                nodeBusItem->setData(0, Qt::UserRole + 1, "NodeBus");
-                nodeBusItem->setData(0, Qt::UserRole + 2, model->fileName()); // Correctly associate model file name
-
-                // Transmitted Messages
-                QTreeWidgetItem* txMessagesItem = new QTreeWidgetItem(nodeBusItem);
-                txMessagesItem->setText(0, "Transmitted Messages");
-                txMessagesItem->setData(0, Qt::UserRole + 1, "TxMessages");
-
-                // Sort transmitted messages
-                QList<TxRxMessage> txMessages = nodeBus.tx;
-                std::sort(txMessages.begin(), txMessages.end(), [](const TxRxMessage& a, const TxRxMessage& b) {
-                    return a.name.toLower() < b.name.toLower();
-                });
-
-                for (const TxRxMessage& txMsg : txMessages) {
-                    QTreeWidgetItem* msgItem = new QTreeWidgetItem(txMessagesItem);
-                    msgItem->setText(0, txMsg.name);
-                    msgItem->setData(0, Qt::UserRole, txMsg.name);
-                    msgItem->setData(0, Qt::UserRole + 1, "TxMessage"); // Assign specific type
-                    msgItem->setData(0, Qt::UserRole + 2, model->fileName());
-                }
-
-                // Received Messages
-                QTreeWidgetItem* rxMessagesItem = new QTreeWidgetItem(nodeBusItem);
-                rxMessagesItem->setText(0, "Received Messages");
-                rxMessagesItem->setData(0, Qt::UserRole + 1, "RxMessages");
-
-                // Sort received messages
-                QList<TxRxMessage> rxMessages = nodeBus.rx;
-                std::sort(rxMessages.begin(), rxMessages.end(), [](const TxRxMessage& a, const TxRxMessage& b) {
-                    return a.name.toLower() < b.name.toLower();
-                });
-
-                for (const TxRxMessage& rxMsg : rxMessages) {
-                    QTreeWidgetItem* msgItem = new QTreeWidgetItem(rxMessagesItem);
-                    msgItem->setText(0, rxMsg.name);
-                    msgItem->setData(0, Qt::UserRole, rxMsg.name);
-                    msgItem->setData(0, Qt::UserRole + 1, "RxMessage"); // Assign specific type
-                    msgItem->setData(0, Qt::UserRole + 2, model->fileName());
+            if (!existingBus) {
+                existingBus = new QTreeWidgetItem(busesItem, QStringList(bus.name));
+                existingBus->setData(0, Qt::UserRole, "Bus");
+                existingBus->setData(0, Qt::UserRole + 1, QStringList() << modelName);
+            }
+            else {
+                // Append model name if not already present
+                QStringList modelsList = existingBus->data(0, Qt::UserRole + 1).toStringList();
+                if (!modelsList.contains(modelName)) {
+                    modelsList << modelName;
+                    existingBus->setData(0, Qt::UserRole + 1, modelsList);
                 }
             }
         }
 
-        // Messages
-        QTreeWidgetItem* messagesItem = new QTreeWidgetItem(rootItem);
-        messagesItem->setText(0, "Messages");
-        messagesItem->setData(0, Qt::UserRole + 1, "Messages");
+        // Populate ECUs
+        for (const ECU& ecu : model->ecus()) { // Assuming 'ECU' replaces 'Node'
+            QTreeWidgetItem* existingECU = nullptr;
+            for (int i = 0; i < ecusItem->childCount(); ++i) {
+                QTreeWidgetItem* child = ecusItem->child(i);
+                if (child->text(0) == ecu.name) {
+                    existingECU = child;
+                    break;
+                }
+            }
+            if (!existingECU) {
+                existingECU = new QTreeWidgetItem(ecusItem, QStringList(ecu.name));
+                existingECU->setData(0, Qt::UserRole, "ECU");
+                existingECU->setData(0, Qt::UserRole + 1, QStringList() << modelName);
+            }
+            else {
+                QStringList modelsList = existingECU->data(0, Qt::UserRole + 1).toStringList();
+                if (!modelsList.contains(modelName)) {
+                    modelsList << modelName;
+                    existingECU->setData(0, Qt::UserRole + 1, modelsList);
+                }
+            }
 
-        // Collect and sort messages
-        QList<Message> messages = model->messages();
-        std::sort(messages.begin(), messages.end(), [](const Message& a, const Message& b) {
-            return a.name.toLower() < b.name.toLower();
-        });
 
-        for (const Message& message : messages) {
-            QTreeWidgetItem* messageItem = new QTreeWidgetItem(messagesItem);
-            messageItem->setText(0, message.name);
-            messageItem->setData(0, Qt::UserRole, message.name); // Store message name
-            messageItem->setData(0, Qt::UserRole + 1, "Message"); // Top-level message type
-            messageItem->setData(0, Qt::UserRole + 2, model->fileName());
+            // Add NodeBuses under ECU
+            for (const NodeBus& nodeBus : ecu.buses) {
+                QTreeWidgetItem* nodeBusItem = new QTreeWidgetItem(existingECU, QStringList(nodeBus.name));
+                nodeBusItem->setData(0, Qt::UserRole, "NodeBus");
+                nodeBusItem->setData(0, Qt::UserRole + 1, QStringList() << modelName);
 
-            // Collect and sort signals
-            QList<Signal> messageSignals = message.data;
-            std::sort(messageSignals.begin(), messageSignals.end(), [](const Signal& a, const Signal& b) {
-                return a.name.toLower() < b.name.toLower();
-            });
+                // Add Transmitted Messages
+                QTreeWidgetItem* txMessagesItem = new QTreeWidgetItem(nodeBusItem, QStringList("Transmitted Messages"));
+                txMessagesItem->setData(0, Qt::UserRole, "TxMessages");
 
-            for (const Signal& signal : messageSignals) {
-                QTreeWidgetItem* signalItem = new QTreeWidgetItem(messageItem);
-                signalItem->setText(0, signal.name);
-                signalItem->setData(0, Qt::UserRole, signal.name); // Store signal name
-                signalItem->setData(0, Qt::UserRole + 1, "Signal");
-                signalItem->setData(0, Qt::UserRole + 2, model->fileName());
+                for (const TxRxMessage& txMsg : nodeBus.tx) {
+                    QTreeWidgetItem* msgItem = new QTreeWidgetItem(txMessagesItem, QStringList(txMsg.name));
+                    msgItem->setData(0, Qt::UserRole, "TxMessage");
+                    msgItem->setData(0, Qt::UserRole + 1, QStringList() << modelName);
+                }
+
+                // Add Received Messages
+                QTreeWidgetItem* rxMessagesItem = new QTreeWidgetItem(nodeBusItem, QStringList("Received Messages"));
+                rxMessagesItem->setData(0, Qt::UserRole, "RxMessages");
+
+                for (const TxRxMessage& rxMsg : nodeBus.rx) {
+                    QTreeWidgetItem* msgItem = new QTreeWidgetItem(rxMessagesItem, QStringList(rxMsg.name));
+                    msgItem->setData(0, Qt::UserRole, "RxMessage");
+                    msgItem->setData(0, Qt::UserRole + 1, QStringList() << modelName);
+                }
             }
         }
+
+        // Populate Messages and Signals
+        for (const Message& message : model->messages()) {
+            QTreeWidgetItem* existingMessage = nullptr;
+            for (int i = 0; i < messagesItem->childCount(); ++i) {
+                QTreeWidgetItem* child = messagesItem->child(i);
+                if (child->text(0) == message.name) {
+                    existingMessage = child;
+                    break;
+                }
+            }
+            if (!existingMessage) {
+                existingMessage = new QTreeWidgetItem(messagesItem, QStringList(message.name));
+                existingMessage->setData(0, Qt::UserRole, "Message");
+                existingMessage->setData(0, Qt::UserRole + 1, QStringList() << modelName);
+            }
+            else {
+                QStringList modelsList = existingMessage->data(0, Qt::UserRole + 1).toStringList();
+                if (!modelsList.contains(modelName)) {
+                    modelsList << modelName;
+                    existingMessage->setData(0, Qt::UserRole + 1, modelsList);
+                }
+            }
+
+            // Add Signals under each message
+            for (const Signal& signal : message.data) {
+                QTreeWidgetItem* signalItem = new QTreeWidgetItem(existingMessage, QStringList(signal.name));
+                signalItem->setData(0, Qt::UserRole, "Signal");
+                signalItem->setData(0, Qt::UserRole + 1, QStringList() << modelName);
+            }
+        }
+    }
+
+    // After populating, sort children alphabetically
+    QList<QTreeWidgetItem*> topLevelBuses = this->findItems("Buses", Qt::MatchExactly, 0);
+    if (!topLevelBuses.isEmpty()) {
+        QTreeWidgetItem* busesItem = topLevelBuses.first();
+        busesItem->sortChildren(0, Qt::AscendingOrder);
+    }
+
+    QList<QTreeWidgetItem*> topLevelECUs = this->findItems("ECUs", Qt::MatchExactly, 0);
+    if (!topLevelECUs.isEmpty()) {
+        QTreeWidgetItem* ecusItem = topLevelECUs.first();
+        ecusItem->sortChildren(0, Qt::AscendingOrder);
+    }
+
+    QList<QTreeWidgetItem*> topLevelMessages = this->findItems("Messages", Qt::MatchExactly, 0);
+    if (!topLevelMessages.isEmpty()) {
+        QTreeWidgetItem* messagesItem = topLevelMessages.first();
+        messagesItem->sortChildren(0, Qt::AscendingOrder);
     }
 }
