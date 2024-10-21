@@ -1,0 +1,19 @@
+# ninja log v6
+33	264	1729468627056102540	HeavyInsight_autogen/timestamp	bcee15d5785ad013
+2217	8488	1729464005815409868	CMakeFiles/HeavyInsight.dir/dbctree.cpp.o	39a0136958ccd958
+33	264	1729468627056102540	HeavyInsight_autogen/mocs_compilation.cpp	bcee15d5785ad013
+33	264	1729468627056102540	/Users/onurkanmaz/Desktop/CommsOnWheels/build/Qt_6_8_0_for_macOS-Debug/HeavyInsight_autogen/mocs_compilation.cpp	bcee15d5785ad013
+265	9294	1729468627287786715	CMakeFiles/HeavyInsight.dir/mainwindow.cpp.o	a83009f3be62dc25
+2092	2214	1729464005806699057	/Users/onurkanmaz/Desktop/CommsOnWheels/build/Qt_6_8_0_for_macOS-Debug/HeavyInsight_autogen/EWIEGA46WW/qrc_resources.cpp	92094ce9790aa6cb
+33	264	1729468627056102540	/Users/onurkanmaz/Desktop/CommsOnWheels/build/Qt_6_8_0_for_macOS-Debug/HeavyInsight_autogen/timestamp	bcee15d5785ad013
+2092	2214	1729464005806699057	HeavyInsight_autogen/EWIEGA46WW/qrc_resources.cpp	92094ce9790aa6cb
+2215	8207	1729464005813763107	CMakeFiles/HeavyInsight.dir/main.cpp.o	57b647c8616ff08c
+2214	8271	1729464005812789603	CMakeFiles/HeavyInsight.dir/HeavyInsight_autogen/mocs_compilation.cpp.o	eca11b62c6dd887
+2218	2432	1729464005816304831	CMakeFiles/HeavyInsight.dir/HeavyInsight_autogen/EWIEGA46WW/qrc_resources.cpp.o	b35c2b21a478a7f1
+9294	9868	1729468636316611893	HeavyInsight.app/Contents/MacOS/HeavyInsight	8548b9487350f603
+50	271	1729468676928146503	HeavyInsight_autogen/timestamp	bcee15d5785ad013
+50	271	1729468676928146503	HeavyInsight_autogen/mocs_compilation.cpp	bcee15d5785ad013
+50	271	1729468676928146503	/Users/onurkanmaz/Desktop/CommsOnWheels/build/Qt_6_8_0_for_macOS-Debug/HeavyInsight_autogen/timestamp	bcee15d5785ad013
+50	271	1729468676928146503	/Users/onurkanmaz/Desktop/CommsOnWheels/build/Qt_6_8_0_for_macOS-Debug/HeavyInsight_autogen/mocs_compilation.cpp	bcee15d5785ad013
+272	9238	1729468677150160493	CMakeFiles/HeavyInsight.dir/mainwindow.cpp.o	a83009f3be62dc25
+9238	9779	1729468686115539414	HeavyInsight.app/Contents/MacOS/HeavyInsight	8548b9487350f603

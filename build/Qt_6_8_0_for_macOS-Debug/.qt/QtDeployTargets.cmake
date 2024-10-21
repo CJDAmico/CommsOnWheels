@@ -1,0 +1,2 @@
+set(__QT_DEPLOY_TARGET_HeavyInsight_FILE /Users/onurkanmaz/Desktop/CommsOnWheels/build/Qt_6_8_0_for_macOS-Debug/HeavyInsight.app/Contents/MacOS/HeavyInsight)
+set(__QT_DEPLOY_TARGET_HeavyInsight_TYPE EXECUTABLE)

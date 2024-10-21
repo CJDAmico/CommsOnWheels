@@ -46,20 +46,21 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         QString selectedFile = QFileDialog::getOpenFileName(
             nullptr,
             "Open DBC File",
-            QDir::homePath(),
+            QDir::currentPath(),
             "DBC Files (*.dbc)"
             );
         if (!selectedFile.isEmpty()) {
-            // Inform the user which file was selected
-            QMessageBox::information(nullptr, "Import Successful", "DBC File Imported:\n" + selectedFile);
-
             // Run Python Script to Convert DBC to JSON
             QProcess process;
             QStringList scriptParameters;
-            scriptParameters << QCoreApplication::applicationDirPath() + "/convert.py ";
+            scriptParameters << QDir::currentPath() + "/convert.py";
+            scriptParameters << QDir::currentPath();
             scriptParameters << selectedFile;
-            process.start("python", scriptParameters);
+            process.start("python3", scriptParameters);
             process.waitForFinished();
+
+            // Inform the user the import was succesful
+            QMessageBox::information(nullptr, "Import Successful", "DBC File Imported:\n" + selectedFile);
         }
     });
     connect(exitAction, &QAction::triggered, this, &MainWindow::close);
@@ -183,11 +184,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     // Add the buttons layout below the Signals list
     formLayout->addRow(signalButtons);
 
-    // Add inputs form to right tab
-    definitionTab->setLayout(formLayout);
-
     // Add tabs panel widget
     rightPanel->addTab(definitionTab, "Definition");
+
+    // Add inputs form to right tab
+    definitionTab->setLayout(formLayout);
 
     // ------------------- Center Layout -----------------------
     QSplitter *splitter = new QSplitter(Qt::Horizontal);
