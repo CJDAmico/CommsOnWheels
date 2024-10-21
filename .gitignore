@@ -1,54 +1,72 @@
-# C++ objects and libs
-*.slo
-*.lo
-*.o
-*.a
-*.la
-*.lai
-*.so
-*.so.*
-*.dll
-*.dylib
+# Ignore build directories
+build/
+debug/
+release/
 
-# Qt-es
-object_script.*.Release
-object_script.*.Debug
-*_plugin_import.cpp
-/.qmake.cache
-/.qmake.stash
+# Ignore Qt-specific files
+*.user
 *.pro.user
 *.pro.user.*
 *.qbs.user
-*.qbs.user.*
-*.moc
-moc_*.cpp
-moc_*.h
-qrc_*.cpp
-ui_*.h
-*.qmlc
-*.jsc
-Makefile*
-*build-*
-*.qm
-*.prl
-
-# Qt unit tests
-target_wrapper.*
-
-# QtCreator
+*.creator.user
+*.creator.user.*
 *.autosave
 
-# QtCreator Qml
+# Ignore Makefile and generated files
+Makefile*
+*.moc
+*.obj
+*.o
+*.d
+*.a
+*.dll
+*.lib
+*.so
+*.so.*
+*.dylib
+
+# Ignore Qt Design Studio specific files
+*.qmlc
+*.jsc
 *.qmlproject.user
-*.qmlproject.user.*
 
-# QtCreator CMake
-CMakeLists.txt.user*
+# Ignore generated UI and translation files
+*.qrc
+*.ui
+*.ts
 
-# QtCreator 4.8< compilation database
-compile_commands.json
+# Ignore backup files
+*~
+*.swp
+*.swo
+*.bak
 
-# QtCreator local machine specific files for imported projects
-*creator.user*
+# Ignore macOS specific files
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon\r
+._*
 
-*_qmlcache.qrc
+# Ignore Windows specific files
+Thumbs.db
+Desktop.ini
+
+# Ignore compiled Python files if your project includes any
+*.pyc
+*.pyo
+__pycache__/
+
+# Ignore CMake generated files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+CTestTestfile.cmake
+Makefile
+
+# Ignore log files
+*.log
+
+# Ignore other IDE-specific files
+.idea/
+.vscode/
