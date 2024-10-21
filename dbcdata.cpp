@@ -60,13 +60,8 @@ void DbcDataModel::parseJson(const QJsonObject& jsonObject) {
     for (const QJsonValue& value : messagesArray) {
         QJsonObject messageObject = value.toObject();
         Message message;
-
         message.pgn = messageObject.value("pgn").toVariant().toULongLong();
-        QString messageName = messageObject.value("name").toString();
-        if(messageName.endsWith(":")) {
-            messageName.chop(1);
-        }
-        message.name = messageName;
+        message.name = messageObject.value("name").toString();
         message.description = messageObject.value("description").toString();
         message.priority = messageObject.value("priority").toInt();
         message.length = messageObject.value("length").toInt();
@@ -136,11 +131,7 @@ void DbcDataModel::parseJson(const QJsonObject& jsonObject) {
             for (const QJsonValue& txValue : txArray) {
                 QJsonObject txObject = txValue.toObject();
                 TxRxMessage txMessage;
-                QString txMessageName = txObject.value("name").toString();
-                if(txMessageName.endsWith(":")) {
-                    txMessageName.chop(1);
-                }
-                txMessage.name = txMessageName;
+                txMessage.name = txObject.value("name").toString();
                 nodeBus.tx.append(txMessage);
             }
 
@@ -149,11 +140,7 @@ void DbcDataModel::parseJson(const QJsonObject& jsonObject) {
             for (const QJsonValue& rxValue : rxArray) {
                 QJsonObject rxObject = rxValue.toObject();
                 TxRxMessage rxMessage;
-                QString rxMessageName = rxObject.value("name").toString();
-                if(rxMessageName.endsWith(":")) {
-                    rxMessageName.chop(1);
-                }
-                rxMessage.name = rxMessageName;
+                rxMessage.name = rxObject.value("name").toString();
                 nodeBus.rx.append(rxMessage);
             }
 

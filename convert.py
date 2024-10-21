@@ -113,7 +113,7 @@ def parse_dbc_file(dbc_file_path):
                     'name': bus['name'],
                     'source_address': 0,  # Set the source address, valid values are 0-255
                     'tx': [{'name': msg['name']} for msg in db_dict['messages']],
-                    'rx': [{'name': 'TC1'}]  # Example receive message, modify based on DBC data
+                    'rx': [{'name': 'TC1:'}]  # Example receive message, modify based on DBC data
                 }
             ]
         }
