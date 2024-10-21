@@ -62,7 +62,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
         QString selectedFile = QFileDialog::getOpenFileName(
             nullptr,
-            "Open JSON File",
+            "Import JSON File",
             lastDir,
             "JSON Files (*.json)"
             );
@@ -72,13 +72,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
             QString selectedDir = fileInfo.absolutePath();
             settings.setValue("lastWorkingDir", selectedDir);
 
-            QString jsonFileName = fileInfo.completeBaseName() + ".json";
-            QString jsonFilePath = QDir(QDir::currentPath() + "/JSON/").filePath(jsonFileName);
-
             // Load the JSON file into the data model
             DbcDataModel* newModel = new DbcDataModel();
             newModel->setFileName(fileInfo.fileName());
-            if (newModel->loadJson(jsonFilePath)) {
+            if (newModel->loadJson(selectedFile)) {
                 dbcModels.append(newModel);
                 updateDbcTree();
             } else {
