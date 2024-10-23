@@ -33,10 +33,10 @@ class ECU {
 };
 
 class Enumeration {
-public:
-    QString name;            // Required
-    QString description;     // Optional, defaults to empty string
-    int value;               // Required
+    public:
+        QString name;            // Required
+        QString description;     // Optional, defaults to empty string
+        int value;               // Required
 };
 
 class Signal {
@@ -59,7 +59,7 @@ class Signal {
 
 class Message {
     public:
-        quint64 pgn;                 // Required
+        quint64 pgn;             // Required
         QString name;            // Required
         QString description;     // Optional, defaults to empty string
         int priority;            // Required

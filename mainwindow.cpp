@@ -740,9 +740,6 @@ void MainWindow::clearRightPanel()
     while (rightPanel->count() > 0) {
         QWidget* widget = rightPanel->widget(0);
         rightPanel->removeTab(0);
-        if (widget) {
-            delete widget;
-        }
     }
 
     // Definition Tab
@@ -776,8 +773,6 @@ void MainWindow::clearRightPanel()
     offsetSpinBox->setValue(0.0);
     unitsLineEdit->clear();
     enumerationsTable->setRowCount(0);
-
-
 }
 
 
