@@ -724,14 +724,12 @@ void MainWindow::setupRightPanel()
     // Initialize all tabs
     rightPanel->addTab(definitionTab, "Definition");
     rightPanel->addTab(busTab, "Bus");
-    rightPanel->addTab(nodeTab, "Node");
     rightPanel->addTab(signalTab, "Signal");
     rightPanel->addTab(ecuTab, "ECU"); // Add ECU Tab
 
     // Hide all tabs initially
     rightPanel->removeTab(rightPanel->indexOf(definitionTab));
     rightPanel->removeTab(rightPanel->indexOf(busTab));
-    rightPanel->removeTab(rightPanel->indexOf(nodeTab));
     rightPanel->removeTab(rightPanel->indexOf(signalTab));
     rightPanel->removeTab(rightPanel->indexOf(ecuTab)); // Hide ECU Tab initially
 }
