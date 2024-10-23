@@ -30,11 +30,6 @@ Makefile*
 *.jsc
 *.qmlproject.user
 
-# Ignore generated UI and translation files
-*.qrc
-*.ui
-*.ts
-
 # Ignore backup files
 *~
 *.swp

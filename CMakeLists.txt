@@ -17,7 +17,13 @@ set(PROJECT_SOURCES
     mainwindow.cpp
     mainwindow.h
     mainwindow.ui
+
 )
+
+# Create a JSON output folder in the project build
+set(JSON_OUTPUTS ${CMAKE_BINARY_DIR}/JSON)
+file(MAKE_DIRECTORY ${JSON_OUTPUTS})
+
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(HeavyInsight
@@ -25,6 +31,8 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         ${PROJECT_SOURCES}
         dbctree.h
         dbctree.cpp
+        resources.qrc
+        dbcdata.h dbcdata.cpp
         resources.qrc
     )
 else()
