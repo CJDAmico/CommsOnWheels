@@ -145,7 +145,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
                                       .arg(QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss"));
 
         // Construct the full file path
-        QString filePath = jsonDirPath + "/" + defaultFileName;
+        QString filePath = jsonDirPath + QDir::separator() + defaultFileName;
 
         // TODO: Convert the current list of DbcDataModels into a single JSON
         // QJsonDocument jsonDoc; // Placeholder for the JSON document
@@ -742,6 +742,9 @@ void MainWindow::clearRightPanel()
     while (rightPanel->count() > 0) {
         QWidget* widget = rightPanel->widget(0);
         rightPanel->removeTab(0);
+        if (widget) {
+            delete widget;
+        }
     }
 
     // Definition Tab
