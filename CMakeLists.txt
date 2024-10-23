@@ -33,6 +33,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         dbctree.cpp
         resources.qrc
         dbcdata.h dbcdata.cpp
+        resources.qrc
     )
 else()
     if(ANDROID)
