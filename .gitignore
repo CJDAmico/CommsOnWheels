@@ -3,6 +3,9 @@ build/
 debug/
 release/
 
+# Ignore macOS user-specific system files
+.DS_Store
+
 # Ignore Qt-specific files
 *.user
 *.pro.user
