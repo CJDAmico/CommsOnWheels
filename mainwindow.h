@@ -28,12 +28,11 @@ public:
 
 private slots:
     void onTreeItemClicked(QTreeWidgetItem* item, int column);
-
     // Handle selection of node types to open tabs
     void handleMessageItem(QTreeWidgetItem* item, const QString& name, const QStringList& models);
     void handleSignalItem(QTreeWidgetItem* item, const QString& name, const QStringList& models);
-    void handleBusItem(QTreeWidgetItem* item, const QString& name, const QStringList& models);
-    void handleECUItem(QTreeWidgetItem* item, const QString& name, const QStringList& models);
+    void handleNetworkItem(QTreeWidgetItem* item, const QString& name, const QStringList& models);
+    void handleNodeItem(QTreeWidgetItem* item, const QString& name, const QStringList& models);
 
 private:
     Ui::MainWindow *ui;
@@ -41,16 +40,14 @@ private:
     DbcTree* dbcTree;
 
     void addAttributeRow(QTableWidget *table, const QStringList &rowData);
-    void toggleDarkMode();
-    QAction *styleMode;
-    QPalette defaultPalette;
-    QString defaultStyleSheet;
-
+    // void toggleDarkMode();
+    // QAction *styleMode;
+    // QPalette defaultPalette;
+    // QString defaultStyleSheet;
 
     void updateDbcTree();
     void setupRightPanel();
     void clearRightPanel();
-
 
     // Left and Right Tab Splitter
     QSplitter *splitter;
@@ -60,7 +57,7 @@ private:
 
     // Tabs
     QWidget *definitionTab;
-    QWidget *busTab;
+    QWidget *networkTab;
     QWidget *nodeTab;
     QWidget *signalTab;
 
@@ -76,15 +73,14 @@ private:
     QTableWidget *attributesTable;
     QListWidget *signalsList;
 
-    // Widgets for Bus Tab
-    QFormLayout *busFormLayout;
-    QLineEdit *busNameLineEdit;
+    // Widgets for network Tab
+    QFormLayout *networkFormLayout;
+    QLineEdit *networkNameLineEdit;
     QLineEdit *baudRateLineEdit;
 
-    // Widgets for ECU Tab
-    QWidget* ecuTab;
-    QFormLayout* ecuFormLayout;
-    QLineEdit* ecuNameLineEdit;
+    // Widgets for node Tab
+    QFormLayout* nodeFormLayout;
+    QLineEdit* nodeNameLineEdit;
 
     // Widgets for Signal Tab
     QFormLayout *signalFormLayout;

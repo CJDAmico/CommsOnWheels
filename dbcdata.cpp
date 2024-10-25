@@ -20,7 +20,7 @@ QString DbcDataModel::fileName() const
 
 
 bool DbcDataModel::importDBC(const QString& filePath) {
-    // TODO: Implement parsing DBC and filling m_buses, m_messages, and m_ecus with a list of their corresponding classes (Look into parseJSON for example)
+    // TODO: Implement parsing DBC and filling m_Networkes, m_messages, and m_nodes with a list of their corresponding classes (Look into parseJSON for example)
     return false;
 }
 
@@ -45,23 +45,29 @@ bool DbcDataModel::loadJson(const QString& filePath) {
     return true;
 }
 
+
 void DbcDataModel::parseJson(const QJsonObject& jsonObject) {
     // Clear existing data
-    m_buses.clear();
+    m_networks.clear();
     m_messages.clear();
-    m_ecus.clear();
+    m_nodes.clear();
 
-    // Parse buses
+    // Parse Networks ("buses" on JSON)
     QJsonArray busesArray = jsonObject.value("buses").toArray();
     for (const QJsonValue& value : busesArray) {
         QJsonObject busObject = value.toObject();
-        Bus bus;
-        bus.name = busObject.value("name").toString();
-        bus.baud = busObject.value("baud").toString();
-        m_buses.append(bus);
+        Network network;
+        network.name = busObject.value("name").toString();
+        network.baud = busObject.value("baud").toString();
+        m_networks.append(network);
     }
 
-    // Parse messages
+    // Sort m_networks alphabetically by name
+    std::sort(m_networks.begin(), m_networks.end(), [](const Network& a, const Network& b) {
+        return a.name.toLower() < b.name.toLower();
+    });
+
+    // Parse Messages
     QJsonArray messagesArray = jsonObject.value("messages").toArray();
     for (const QJsonValue& value : messagesArray) {
         QJsonObject messageObject = value.toObject();
@@ -74,7 +80,7 @@ void DbcDataModel::parseJson(const QJsonObject& jsonObject) {
         message.txPeriodicity = messageObject.value("tx_periodicity").toInt(0);
         message.txOnChange = messageObject.value("tx_onChange").toBool(false);
 
-        // Parse signals (data)
+        // Parse signals
         QJsonArray dataArray = messageObject.value("data").toArray();
         for (const QJsonValue& dataValue : dataArray) {
             QJsonObject signalObject = dataValue.toObject();
@@ -111,26 +117,36 @@ void DbcDataModel::parseJson(const QJsonObject& jsonObject) {
                 signal.enumerations.append(enumeration);
             }
 
-            message.data.append(signal);
+            message.messageSignals.append(signal);
         }
+
+        // Sort message.messageSignals alphabetically by name
+        std::sort(message.messageSignals.begin(), message.messageSignals.end(), [](const Signal& a, const Signal& b) {
+            return a.name.toLower() < b.name.toLower();
+        });
 
         m_messages.append(message);
     }
 
-    // Parse nodes
+    // Sort m_messages alphabetically by name
+    std::sort(m_messages.begin(), m_messages.end(), [](const Message& a, const Message& b) {
+        return a.name.toLower() < b.name.toLower();
+    });
+
+    // Parse Nodes
     QJsonArray nodesArray = jsonObject.value("nodes").toArray();
     for (const QJsonValue& value : nodesArray) {
         QJsonObject nodeObject = value.toObject();
-        ECU node;
+        Node node;
         node.name = nodeObject.value("name").toString();
 
-        // Parse node buses
-        QJsonArray nodeBusesArray = nodeObject.value("buses").toArray();
-        for (const QJsonValue& busValue : nodeBusesArray) {
+        // Associate Nodes with their Networks (buses)
+        QJsonArray nodeNetworksArray = nodeObject.value("buses").toArray();
+        for (const QJsonValue& busValue : nodeNetworksArray) {
             QJsonObject busObject = busValue.toObject();
-            NodeBus nodeBus;
-            nodeBus.name = busObject.value("name").toString();
-            nodeBus.sourceAddress = busObject.value("source_address").toInt();
+            NodeNetworkAssociation nodeNetwork;
+            nodeNetwork.networkName = busObject.value("name").toString();
+            nodeNetwork.sourceAddress = busObject.value("source_address").toInt();
 
             // Parse tx messages
             QJsonArray txArray = busObject.value("tx").toArray();
@@ -138,8 +154,13 @@ void DbcDataModel::parseJson(const QJsonObject& jsonObject) {
                 QJsonObject txObject = txValue.toObject();
                 TxRxMessage txMessage;
                 txMessage.name = txObject.value("name").toString();
-                nodeBus.tx.append(txMessage);
+                nodeNetwork.tx.append(txMessage);
             }
+
+            // Sort nodeNetwork.tx alphabetically by name
+            std::sort(nodeNetwork.tx.begin(), nodeNetwork.tx.end(), [](const TxRxMessage& a, const TxRxMessage& b) {
+                return a.name.toLower() < b.name.toLower();
+            });
 
             // Parse rx messages
             QJsonArray rxArray = busObject.value("rx").toArray();
@@ -147,24 +168,41 @@ void DbcDataModel::parseJson(const QJsonObject& jsonObject) {
                 QJsonObject rxObject = rxValue.toObject();
                 TxRxMessage rxMessage;
                 rxMessage.name = rxObject.value("name").toString();
-                nodeBus.rx.append(rxMessage);
+                nodeNetwork.rx.append(rxMessage);
             }
 
-            node.buses.append(nodeBus);
+            // Sort nodeNetwork.rx alphabetically by name
+            std::sort(nodeNetwork.rx.begin(), nodeNetwork.rx.end(), [](const TxRxMessage& a, const TxRxMessage& b) {
+                return a.name.toLower() < b.name.toLower();
+            });
+
+            node.networks.append(nodeNetwork);
         }
 
-        m_ecus.append(node);
+        // Sort node.networks alphabetically by networkName
+        std::sort(node.networks.begin(), node.networks.end(), [](const NodeNetworkAssociation& a, const NodeNetworkAssociation& b) {
+            return a.networkName.toLower() < b.networkName.toLower();
+        });
+
+        m_nodes.append(node);
     }
+
+    // Sort m_nodes alphabetically by name
+    std::sort(m_nodes.begin(), m_nodes.end(), [](const Node& a, const Node& b) {
+        return a.name.toLower() < b.name.toLower();
+    });
 }
 
-QList<Bus> DbcDataModel::buses() const {
-    return m_buses;
+
+
+QList<Network> DbcDataModel::networks() const {
+    return m_networks;
 }
 
 QList<Message> DbcDataModel::messages() const {
     return m_messages;
 }
 
-QList<ECU> DbcDataModel::ecus() const {
-    return m_ecus;
+QList<Node> DbcDataModel::nodes() const {
+    return m_nodes;
 }

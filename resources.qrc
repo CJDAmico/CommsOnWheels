@@ -1,5 +1,9 @@
 <RCC>
     <qresource prefix="/icons">
         <file>windowIcon.svg</file>
+        <file>message.svg</file>
+        <file>network.svg</file>
+        <file>signal.svg</file>
+        <file>node.svg</file>
     </qresource>
 </RCC>

@@ -1,0 +1,98 @@
+{
+  "buses": [
+    {
+      "name": "Network1",
+      "baud": "250k"
+    },
+    {
+      "name": "Network2",
+      "baud": "500k"
+    }
+  ],
+  "messages": [
+    {
+      "pgn": 123456,
+      "name": "MessageOnNetwork1",
+      "description": "Message transmitted on Network1",
+      "priority": 3,
+      "length": 8,
+      "tx_periodicity": 100,
+      "tx_onChange": true,
+      "data": [
+        {
+          "spn": 101,
+          "name": "Signal1",
+          "description": "First signal on MessageOnNetwork1",
+          "start_bit": 0,
+          "bit_length": 16,
+          "is_bigEndian": false,
+          "is_twosComplement": false,
+          "factor": 1.0,
+          "offset": 0.0,
+          "units": "Celsius",
+          "scaled_min": -40,
+          "scaled_max": 215,
+          "scaled_default": 0
+        }
+      ]
+    },
+    {
+      "pgn": 654321,
+      "name": "MessageOnNetwork2",
+      "description": "Message transmitted on Network2",
+      "priority": 4,
+      "length": 8,
+      "tx_periodicity": 200,
+      "tx_onChange": false,
+      "data": [
+        {
+          "spn": 202,
+          "name": "Signal2",
+          "description": "Signal for MessageOnNetwork2",
+          "start_bit": 8,
+          "bit_length": 8,
+          "is_bigEndian": true,
+          "is_twosComplement": true,
+          "factor": 0.1,
+          "offset": 10.0,
+          "units": "meters",
+          "scaled_min": 0,
+          "scaled_max": 100,
+          "scaled_default": 50
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "name": "Node1",
+      "buses": [
+        {
+          "name": "Network1",
+          "source_address": 10,
+          "tx": [
+            {
+              "name": "MessageOnNetwork1"
+            }
+          ],
+          "rx": []
+        }
+      ]
+    },
+    {
+      "name": "Node2",
+      "buses": [
+        {
+          "name": "Network2",
+          "source_address": 20,
+          "tx": [
+            {
+              "name": "MessageOnNetwork2"
+            }
+          ],
+          "rx": []
+        }
+      ]
+    }
+  ]
+}
