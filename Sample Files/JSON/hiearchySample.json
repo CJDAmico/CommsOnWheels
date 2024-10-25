@@ -1,0 +1,206 @@
+{
+  "buses": [
+    {
+      "name": "ExampleDBC",
+      "baud": "250k"
+    }
+  ],
+  "messages": [
+    {
+      "pgn": 1001,
+      "name": "Node1ToNode2",
+      "description": "Message from Node1 to Node2",
+      "priority": 3,
+      "length": 8,
+      "tx_periodicity": 1000,
+      "tx_onChange": false,
+      "data": [
+        {
+          "spn": 101,
+          "name": "MultiplexorSignal",
+          "description": "Multiplexor Signal Description",
+          "start_bit": 0,
+          "bit_length": 8,
+          "is_bigEndian": false,
+          "is_twosComplement": false,
+          "factor": 1.0,
+          "offset": 0.0,
+          "units": "unit",
+          "scaled_min": null,
+          "scaled_max": null,
+          "scaled_default": null,
+          "enumerations": []
+        },
+        {
+          "spn": 102,
+          "name": "IntelOdometer",
+          "description": "Odometer Value",
+          "start_bit": 8,
+          "bit_length": 16,
+          "is_bigEndian": false,
+          "is_twosComplement": false,
+          "factor": 0.1,
+          "offset": 0.0,
+          "units": "km",
+          "scaled_min": null,
+          "scaled_max": null,
+          "scaled_default": null,
+          "enumerations": []
+        },
+        {
+          "spn": 103,
+          "name": "PressureOverThreeBytes",
+          "description": "Pressure Measurement",
+          "start_bit": 24,
+          "bit_length": 24,
+          "is_bigEndian": false,
+          "is_twosComplement": false,
+          "factor": 1.0,
+          "offset": 0.0,
+          "units": "Pa",
+          "scaled_min": null,
+          "scaled_max": null,
+          "scaled_default": null,
+          "enumerations": []
+        },
+        {
+          "spn": 104,
+          "name": "EnumeratedSignal",
+          "description": "Enumerated Signal Description",
+          "start_bit": 48,
+          "bit_length": 8,
+          "is_bigEndian": false,
+          "is_twosComplement": false,
+          "factor": 1.0,
+          "offset": 0.0,
+          "units": "",
+          "scaled_min": null,
+          "scaled_max": null,
+          "scaled_default": null,
+          "enumerations": [
+            {
+              "name": "OverrideDisabled",
+              "description": "Override disabled. Disable any existing control commanded by the source of this command",
+              "value": 0
+            }
+          ]
+        },
+        {
+          "spn": 105,
+          "name": "NestedMultiplexor",
+          "description": "Nested Multiplexor Signal",
+          "start_bit": 56,
+          "bit_length": 8,
+          "is_bigEndian": false,
+          "is_twosComplement": false,
+          "factor": 1.0,
+          "offset": 0.0,
+          "units": "",
+          "scaled_min": null,
+          "scaled_max": null,
+          "scaled_default": null,
+          "enumerations": []
+        },
+        {
+          "spn": 106,
+          "name": "NonMuxedData",
+          "description": "Non-Multiplexed Data Signal",
+          "start_bit": 64,
+          "bit_length": 8,
+          "is_bigEndian": false,
+          "is_twosComplement": false,
+          "factor": 1.0,
+          "offset": 0.0,
+          "units": "",
+          "scaled_min": null,
+          "scaled_max": null,
+          "scaled_default": null,
+          "enumerations": []
+        }
+      ]
+    },
+    {
+      "pgn": 1002,
+      "name": "Node2Broadcast",
+      "description": "Broadcast message from Node2",
+      "priority": 3,
+      "length": 8,
+      "tx_periodicity": 1000,
+      "tx_onChange": false,
+      "data": [
+        {
+          "spn": 201,
+          "name": "SignedValue",
+          "description": "Signed Value Description",
+          "start_bit": 0,
+          "bit_length": 16,
+          "is_bigEndian": false,
+          "is_twosComplement": true,
+          "factor": 1.0,
+          "offset": 0.0,
+          "units": "units",
+          "scaled_min": null,
+          "scaled_max": null,
+          "scaled_default": null,
+          "enumerations": []
+        },
+        {
+          "spn": 202,
+          "name": "UnsignedValue",
+          "description": "Unsigned Value Description",
+          "start_bit": 16,
+          "bit_length": 16,
+          "is_bigEndian": false,
+          "is_twosComplement": false,
+          "factor": 1.0,
+          "offset": 0.0,
+          "units": "units",
+          "scaled_min": null,
+          "scaled_max": null,
+          "scaled_default": null,
+          "enumerations": []
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "name": "Node1",
+      "buses": [
+        {
+          "name": "ExampleDBC",
+          "source_address": 1,
+          "tx": [
+            {
+              "name": "Node1ToNode2"
+            }
+          ],
+          "rx": [
+            {
+              "name": "Node2Broadcast"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Node2",
+      "buses": [
+        {
+          "name": "ExampleDBC",
+          "source_address": 2,
+          "tx": [
+            {
+              "name": "Node2Broadcast"
+            }
+          ],
+          "rx": [
+            {
+              "name": "Node1ToNode2"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

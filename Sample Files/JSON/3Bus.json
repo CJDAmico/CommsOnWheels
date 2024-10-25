@@ -1,0 +1,130 @@
+{
+  "buses": [
+    {
+      "name": "Network1",
+      "baud": "250k"
+    },
+    {
+      "name": "Network2",
+      "baud": "500k"
+    },
+    {
+      "name": "Network3",
+      "baud": "1M"
+    }
+  ],
+  "messages": [
+    {
+      "pgn": 123456,
+      "name": "MessageA",
+      "description": "This is a description for MessageA",
+      "priority": 3,
+      "length": 8,
+      "tx_periodicity": 100,
+      "tx_onChange": true,
+      "data": [
+        {
+          "spn": 100,
+          "name": "SignalA1",
+          "description": "Signal A1 in MessageA",
+          "start_bit": 0,
+          "bit_length": 8,
+          "is_bigEndian": false,
+          "is_twosComplement": false,
+          "factor": 1.0,
+          "offset": 0.0,
+          "units": "m/s",
+          "scaled_min": 0,
+          "scaled_max": 255,
+          "scaled_default": 0,
+          "enumerations": [
+            {
+              "name": "Enum1",
+              "description": "Enumeration 1 for SignalA1",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "spn": 101,
+          "name": "SignalA2",
+          "description": "Signal A2 in MessageA",
+          "start_bit": 8,
+          "bit_length": 16,
+          "is_bigEndian": true,
+          "is_twosComplement": false,
+          "factor": 0.1,
+          "offset": 0.0,
+          "units": "km/h"
+        }
+      ]
+    },
+    {
+      "pgn": 789123,
+      "name": "MessageB",
+      "description": "This is a description for MessageB",
+      "priority": 2,
+      "length": 8,
+      "tx_periodicity": 200,
+      "tx_onChange": false,
+      "data": [
+        {
+          "spn": 200,
+          "name": "SignalB1",
+          "description": "Signal B1 in MessageB",
+          "start_bit": 0,
+          "bit_length": 8,
+          "is_bigEndian": false,
+          "is_twosComplement": false,
+          "factor": 2.0,
+          "offset": 1.0,
+          "units": "kg"
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "name": "Node1",
+      "buses": [
+        {
+          "name": "Network1",
+          "source_address": 1,
+          "tx": [
+            {
+              "name": "MessageA"
+            }
+          ],
+          "rx": [
+            {
+              "name": "MessageB"
+            }
+          ]
+        },
+        {
+          "name": "Network2",
+          "source_address": 2,
+          "tx": [
+            {
+              "name": "MessageB"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Node2",
+      "buses": [
+        {
+          "name": "Network3",
+          "source_address": 3,
+          "rx": [
+            {
+              "name": "MessageA"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

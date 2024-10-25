@@ -53,150 +53,307 @@ void DbcTree::dropEvent(QDropEvent *event) {
 }
 
 
+// Helper function to find or create a child item
+QTreeWidgetItem* findOrCreateItem(QTreeWidgetItem* parent, const QString& name, const QString& type, const QStringList& modelNames, const QString& iconPath = "")
+{
+    for (int i = 0; i < parent->childCount(); ++i) {
+        QTreeWidgetItem* child = parent->child(i);
+        if (child->text(0) == name && child->data(0, Qt::UserRole).toString() == type) {
+            // Update model names if necessary
+            QStringList existingModels = child->data(0, Qt::UserRole + 1).toStringList();
+            QStringList newModels = modelNames;
+            newModels.removeDuplicates();
+            QStringList updatedModels = existingModels + newModels;
+            updatedModels.removeDuplicates();
+            child->setData(0, Qt::UserRole + 1, updatedModels);
+            return child;
+        }
+    }
+
+    // Create new child item
+    QTreeWidgetItem* newItem = new QTreeWidgetItem(parent, QStringList(name));
+    newItem->setData(0, Qt::UserRole, type); // Set the type
+    newItem->setData(0, Qt::UserRole + 1, modelNames); // Set associated models
+
+    // Set icon if provided
+    if (!iconPath.isEmpty()) {
+        newItem->setIcon(0, QIcon(iconPath));
+    }
+
+    return newItem;
+}
+
+// Function to find a message by name
+const Message* findMessage(const QList<Message>& messages, const QString& name)
+{
+    for (const Message& msg : messages) {
+        if (msg.name.trimmed().compare(name.trimmed(), Qt::CaseInsensitive) == 0) {
+            return &msg;
+        }
+    }
+    return nullptr;
+}
+
 void DbcTree::populateTree(const QList<DbcDataModel*>& models)
 {
     clear();
 
-    // Create unified top-level categories
-    QTreeWidgetItem* busesItem = new QTreeWidgetItem(this, QStringList("Buses"));
-    busesItem->setData(0, Qt::UserRole + 1, "Buses");
+    // Create top-level categories
+    QTreeWidgetItem* networksCategory = new QTreeWidgetItem(this, QStringList("<Networks>"));
+    networksCategory->setData(0, Qt::UserRole, "Category");
+    networksCategory->setExpanded(true);
 
-    QTreeWidgetItem* ecusItem = new QTreeWidgetItem(this, QStringList("ECUs"));
-    ecusItem->setData(0, Qt::UserRole + 1, "ECUs");
+    QTreeWidgetItem* nodesCategory = new QTreeWidgetItem(this, QStringList("<Nodes>"));
+    nodesCategory->setData(0, Qt::UserRole, "Category");
+    nodesCategory->setExpanded(true);
 
-    QTreeWidgetItem* messagesItem = new QTreeWidgetItem(this, QStringList("Messages"));
-    messagesItem->setData(0, Qt::UserRole + 1, "Messages");
+    QTreeWidgetItem* messagesCategory = new QTreeWidgetItem(this, QStringList("<Messages>"));
+    messagesCategory->setData(0, Qt::UserRole, "Category");
+    messagesCategory->setExpanded(true);
 
-    // Iterate through all models and aggregate data
+    // Iterate through all models
     for (const DbcDataModel* model : models) {
         QString modelName = model->fileName();
 
-        // Populate Buses
-        for (const Bus& bus : model->buses()) {
-            // Check if bus already exists
-            QTreeWidgetItem* existingBus = nullptr;
-            for (int i = 0; i < busesItem->childCount(); ++i) {
-                QTreeWidgetItem* child = busesItem->child(i);
-                if (child->text(0) == bus.name) {
-                    existingBus = child;
-                    break;
-                }
-            }
-            if (!existingBus) {
-                existingBus = new QTreeWidgetItem(busesItem, QStringList(bus.name));
-                existingBus->setData(0, Qt::UserRole, "Bus");
-                existingBus->setData(0, Qt::UserRole + 1, QStringList() << modelName);
-            }
-            else {
-                // Append model name if not already present
-                QStringList modelsList = existingBus->data(0, Qt::UserRole + 1).toStringList();
-                if (!modelsList.contains(modelName)) {
-                    modelsList << modelName;
-                    existingBus->setData(0, Qt::UserRole + 1, modelsList);
+        // -------------------------
+        // Populate <Networks> Section
+        // -------------------------
+        for (const Network& network : model->networks()) {
+            // Create or find the network item under <Networks>
+            QTreeWidgetItem* networkItem = findOrCreateItem(networksCategory, network.name, "Network", QStringList() << modelName, ":/icons/network.svg");
+
+            // Iterate through Nodes to find those associated with this network
+            for (const Node& node : model->nodes()) {
+                for (const NodeNetworkAssociation& nodeNetwork : node.networks) {
+                    if (nodeNetwork.networkName == network.name) {
+                        // Create or find the node under this network
+                        QTreeWidgetItem* nodeItem = findOrCreateItem(networkItem, node.name, "Node", QStringList() << modelName, ":/icons/node.svg");
+
+                        // -------------------------
+                        // Add <Transmitted Messages>
+                        // -------------------------
+                        QTreeWidgetItem* txMessagesCategory = new QTreeWidgetItem(nodeItem, QStringList("<Transmitted Messages>"));
+                        txMessagesCategory->setData(0, Qt::UserRole, "Collapsible");
+                        txMessagesCategory->setExpanded(true);
+
+                        for (const TxRxMessage& txMsg : nodeNetwork.tx) {
+                            QTreeWidgetItem* txMsgItem = new QTreeWidgetItem(txMessagesCategory, QStringList(txMsg.name));
+                            txMsgItem->setData(0, Qt::UserRole, "TxMessage");
+                            txMsgItem->setData(0, Qt::UserRole + 1, QStringList() << modelName);
+                            txMsgItem->setIcon(0, QIcon(":/icons/message.svg"));
+
+                            // Add <Signals> under TxMessage
+                            QTreeWidgetItem* signalsCategory = new QTreeWidgetItem(txMsgItem, QStringList("<Signals>"));
+                            signalsCategory->setData(0, Qt::UserRole, "Collapsible");
+                            signalsCategory->setExpanded(true);
+
+                            const Message* message = findMessage(model->messages(), txMsg.name);
+                            if (message) {
+                                for (const Signal& signal : message->messageSignals) {
+                                    QTreeWidgetItem* signalItem = new QTreeWidgetItem(signalsCategory, QStringList(signal.name));
+                                    signalItem->setData(0, Qt::UserRole, "Signal");
+                                    signalItem->setData(0, Qt::UserRole + 1, QStringList() << modelName);
+                                    signalItem->setIcon(0, QIcon(":/icons/signal.svg"));
+                                }
+                            }
+                        }
+
+                        // -------------------------
+                        // Add <Received Messages>
+                        // -------------------------
+                        QTreeWidgetItem* rxMessagesCategory = new QTreeWidgetItem(nodeItem, QStringList("<Received Messages>"));
+                        rxMessagesCategory->setData(0, Qt::UserRole, "Collapsible");
+                        rxMessagesCategory->setExpanded(true);
+
+                        for (const TxRxMessage& rxMsg : nodeNetwork.rx) {
+                            QTreeWidgetItem* rxMsgItem = new QTreeWidgetItem(rxMessagesCategory, QStringList(rxMsg.name));
+                            rxMsgItem->setData(0, Qt::UserRole, "RxMessage");
+                            rxMsgItem->setData(0, Qt::UserRole + 1, QStringList() << modelName);
+                            rxMsgItem->setIcon(0, QIcon(":/icons/message.svg"));
+
+                            // Add <Signals> under RxMessage
+                            QTreeWidgetItem* signalsCategory = new QTreeWidgetItem(rxMsgItem, QStringList("<Signals>"));
+                            signalsCategory->setData(0, Qt::UserRole, "Collapsible");
+                            signalsCategory->setExpanded(true);
+
+                            const Message* message = findMessage(model->messages(), rxMsg.name);
+                            if (message) {
+                                for (const Signal& signal : message->messageSignals) {
+                                    QTreeWidgetItem* signalItem = new QTreeWidgetItem(signalsCategory, QStringList(signal.name));
+                                    signalItem->setData(0, Qt::UserRole, "Signal");
+                                    signalItem->setData(0, Qt::UserRole + 1, QStringList() << modelName);
+                                    signalItem->setIcon(0, QIcon(":/icons/signal.svg"));
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
 
-        // Populate ECUs
-        for (const ECU& ecu : model->ecus()) { // Assuming 'ECU' replaces 'Node'
-            QTreeWidgetItem* existingECU = nullptr;
-            for (int i = 0; i < ecusItem->childCount(); ++i) {
-                QTreeWidgetItem* child = ecusItem->child(i);
-                if (child->text(0) == ecu.name) {
-                    existingECU = child;
-                    break;
-                }
-            }
-            if (!existingECU) {
-                existingECU = new QTreeWidgetItem(ecusItem, QStringList(ecu.name));
-                existingECU->setData(0, Qt::UserRole, "ECU");
-                existingECU->setData(0, Qt::UserRole + 1, QStringList() << modelName);
-            }
-            else {
-                QStringList modelsList = existingECU->data(0, Qt::UserRole + 1).toStringList();
-                if (!modelsList.contains(modelName)) {
-                    modelsList << modelName;
-                    existingECU->setData(0, Qt::UserRole + 1, modelsList);
-                }
-            }
+        // -------------------------
+        // Populate <Nodes> Section
+        // -------------------------
+        for (const Node& node : model->nodes()) {
+            QTreeWidgetItem* nodeItem = findOrCreateItem(nodesCategory, node.name, "Node", QStringList() << modelName, ":/icons/node.svg");
 
+            for (const NodeNetworkAssociation& nodeNetwork : node.networks) {
+                QTreeWidgetItem* networkUnderNode = findOrCreateItem(nodeItem, nodeNetwork.networkName, "Network", QStringList() << modelName, ":/icons/network.svg");
 
-            // Add NodeBuses under ECU
-            for (const NodeBus& nodeBus : ecu.buses) {
-                QTreeWidgetItem* nodeBusItem = new QTreeWidgetItem(existingECU, QStringList(nodeBus.name));
-                nodeBusItem->setData(0, Qt::UserRole, "NodeBus");
-                nodeBusItem->setData(0, Qt::UserRole + 1, QStringList() << modelName);
+                // -------------------------
+                // Add <Transmitted Messages>
+                // -------------------------
+                QTreeWidgetItem* txMessagesCategory = new QTreeWidgetItem(networkUnderNode, QStringList("<Transmitted Messages>"));
+                txMessagesCategory->setData(0, Qt::UserRole, "Collapsible");
+                txMessagesCategory->setExpanded(true);
 
-                // Add Transmitted Messages
-                QTreeWidgetItem* txMessagesItem = new QTreeWidgetItem(nodeBusItem, QStringList("Transmitted Messages"));
-                txMessagesItem->setData(0, Qt::UserRole, "TxMessages");
+                for (const TxRxMessage& txMsg : nodeNetwork.tx) {
+                    QTreeWidgetItem* txMsgItem = new QTreeWidgetItem(txMessagesCategory, QStringList(txMsg.name));
+                    txMsgItem->setData(0, Qt::UserRole, "TxMessage");
+                    txMsgItem->setData(0, Qt::UserRole + 1, QStringList() << modelName);
+                    txMsgItem->setIcon(0, QIcon(":/icons/message.svg"));
 
-                for (const TxRxMessage& txMsg : nodeBus.tx) {
-                    QTreeWidgetItem* msgItem = new QTreeWidgetItem(txMessagesItem, QStringList(txMsg.name));
-                    msgItem->setData(0, Qt::UserRole, "TxMessage");
-                    msgItem->setData(0, Qt::UserRole + 1, QStringList() << modelName);
+                    // Add <Signals> under TxMessage
+                    QTreeWidgetItem* signalsCategory = new QTreeWidgetItem(txMsgItem, QStringList("<Signals>"));
+                    signalsCategory->setData(0, Qt::UserRole, "Collapsible");
+                    signalsCategory->setExpanded(true);
+
+                    const Message* message = findMessage(model->messages(), txMsg.name);
+                    if (message) {
+                        for (const Signal& signal : message->messageSignals) {
+                            QTreeWidgetItem* signalItem = new QTreeWidgetItem(signalsCategory, QStringList(signal.name));
+                            signalItem->setData(0, Qt::UserRole, "Signal");
+                            signalItem->setData(0, Qt::UserRole + 1, QStringList() << modelName);
+                            signalItem->setIcon(0, QIcon(":/icons/signal.svg"));
+                        }
+                    }
                 }
 
-                // Add Received Messages
-                QTreeWidgetItem* rxMessagesItem = new QTreeWidgetItem(nodeBusItem, QStringList("Received Messages"));
-                rxMessagesItem->setData(0, Qt::UserRole, "RxMessages");
+                // -------------------------
+                // Add <Received Messages>
+                // -------------------------
+                QTreeWidgetItem* rxMessagesCategory = new QTreeWidgetItem(networkUnderNode, QStringList("<Received Messages>"));
+                rxMessagesCategory->setData(0, Qt::UserRole, "Collapsible");
+                rxMessagesCategory->setExpanded(true);
 
-                for (const TxRxMessage& rxMsg : nodeBus.rx) {
-                    QTreeWidgetItem* msgItem = new QTreeWidgetItem(rxMessagesItem, QStringList(rxMsg.name));
-                    msgItem->setData(0, Qt::UserRole, "RxMessage");
-                    msgItem->setData(0, Qt::UserRole + 1, QStringList() << modelName);
+                for (const TxRxMessage& rxMsg : nodeNetwork.rx) {
+                    QTreeWidgetItem* rxMsgItem = new QTreeWidgetItem(rxMessagesCategory, QStringList(rxMsg.name));
+                    rxMsgItem->setData(0, Qt::UserRole, "RxMessage");
+                    rxMsgItem->setData(0, Qt::UserRole + 1, QStringList() << modelName);
+                    rxMsgItem->setIcon(0, QIcon(":/icons/message.svg"));
+
+                    // Add <Signals> under RxMessage
+                    QTreeWidgetItem* signalsCategory = new QTreeWidgetItem(rxMsgItem, QStringList("<Signals>"));
+                    signalsCategory->setData(0, Qt::UserRole, "Collapsible");
+                    signalsCategory->setExpanded(true);
+
+                    const Message* message = findMessage(model->messages(), rxMsg.name);
+                    if (message) {
+                        for (const Signal& signal : message->messageSignals) {
+                            QTreeWidgetItem* signalItem = new QTreeWidgetItem(signalsCategory, QStringList(signal.name));
+                            signalItem->setData(0, Qt::UserRole, "Signal");
+                            signalItem->setData(0, Qt::UserRole + 1, QStringList() << modelName);
+                            signalItem->setIcon(0, QIcon(":/icons/signal.svg"));
+                        }
+                    }
                 }
             }
         }
 
-        // Populate Messages and Signals
+        // -------------------------
+        // Populate <Messages> Section
+        // -------------------------
         for (const Message& message : model->messages()) {
-            QTreeWidgetItem* existingMessage = nullptr;
-            for (int i = 0; i < messagesItem->childCount(); ++i) {
-                QTreeWidgetItem* child = messagesItem->child(i);
-                if (child->text(0) == message.name) {
-                    existingMessage = child;
-                    break;
-                }
-            }
-            if (!existingMessage) {
-                existingMessage = new QTreeWidgetItem(messagesItem, QStringList(message.name));
-                existingMessage->setData(0, Qt::UserRole, "Message");
-                existingMessage->setData(0, Qt::UserRole + 1, QStringList() << modelName);
-            }
-            else {
-                QStringList modelsList = existingMessage->data(0, Qt::UserRole + 1).toStringList();
-                if (!modelsList.contains(modelName)) {
-                    modelsList << modelName;
-                    existingMessage->setData(0, Qt::UserRole + 1, modelsList);
-                }
-            }
+            QTreeWidgetItem* messageItem = findOrCreateItem(messagesCategory, message.name, "Message", QStringList() << modelName, ":/icons/message.svg");
 
-            // Add Signals under each message
-            for (const Signal& signal : message.data) {
-                QTreeWidgetItem* signalItem = new QTreeWidgetItem(existingMessage, QStringList(signal.name));
+            // -------------------------
+            // Add <Signals> under Message
+            // -------------------------
+            QTreeWidgetItem* signalsCategory = new QTreeWidgetItem(messageItem, QStringList("<Signals>"));
+            signalsCategory->setData(0, Qt::UserRole, "Collapsible");
+            signalsCategory->setExpanded(true);
+
+            for (const Signal& signal : message.messageSignals) {
+                QTreeWidgetItem* signalItem = new QTreeWidgetItem(signalsCategory, QStringList(signal.name));
                 signalItem->setData(0, Qt::UserRole, "Signal");
                 signalItem->setData(0, Qt::UserRole + 1, QStringList() << modelName);
+                signalItem->setIcon(0, QIcon(":/icons/signal.svg"));
+            }
+
+            // -------------------------
+            // Add <Networks> under Message
+            // -------------------------
+            QTreeWidgetItem* networksUnderMessage = new QTreeWidgetItem(messageItem, QStringList("<Networks>"));
+            networksUnderMessage->setData(0, Qt::UserRole, "Collapsible");
+            networksUnderMessage->setExpanded(true);
+
+            QMap<QString, QSet<QString>> networkTransmitters;
+            QMap<QString, QSet<QString>> networkReceivers;
+
+            // Find all transmitters and receivers for this message
+            for (const DbcDataModel* modelInner : models) {
+                for (const Node& node : modelInner->nodes()) {
+                    for (const NodeNetworkAssociation& nodeNetwork : node.networks) {
+                        if (std::any_of(nodeNetwork.tx.begin(), nodeNetwork.tx.end(), [&](const TxRxMessage& tx) { return tx.name == message.name; })) {
+                            networkTransmitters[nodeNetwork.networkName].insert(node.name);
+                        }
+                        if (std::any_of(nodeNetwork.rx.begin(), nodeNetwork.rx.end(), [&](const TxRxMessage& rx) { return rx.name == message.name; })) {
+                            networkReceivers[nodeNetwork.networkName].insert(node.name);
+                        }
+                    }
+                }
+            }
+
+            // Iterate through all networks that have transmitters or receivers
+            QList<QString> networkTransmittersList = networkTransmitters.keys();
+            QList<QString> networkReceiversList = networkReceivers.keys();
+
+            QSet<QString> allNetworks(networkTransmittersList.begin(), networkTransmittersList.end());
+            allNetworks = allNetworks.unite(QSet<QString>(networkReceiversList.begin(), networkReceiversList.end()));
+            QList<QString> sortedNetworks = allNetworks.values();
+            std::sort(sortedNetworks.begin(), sortedNetworks.end(), [](const QString& a, const QString& b) {
+                return a.toLower() < b.toLower();
+            });
+
+            for (const QString& networkName : sortedNetworks) {
+                QTreeWidgetItem* networkItem = findOrCreateItem(networksUnderMessage, networkName, "Network", QStringList() << modelName, ":/icons/network.svg");
+
+                // -------------------------
+                // Add <Transmitters>
+                // -------------------------
+                QTreeWidgetItem* transmittersCategory = new QTreeWidgetItem(networkItem, QStringList("<Transmitters>"));
+                transmittersCategory->setData(0, Qt::UserRole, "Collapsible");
+                transmittersCategory->setExpanded(true);
+
+                QList<QString> transmitters = networkTransmitters.value(networkName).values();
+                std::sort(transmitters.begin(), transmitters.end(), [](const QString& a, const QString& b) {
+                    return a.toLower() < b.toLower();
+                });
+                for (const QString& tx : transmitters) {
+                    QTreeWidgetItem* txItem = new QTreeWidgetItem(transmittersCategory, QStringList(tx));
+                    txItem->setData(0, Qt::UserRole, "Node");
+                    txItem->setData(0, Qt::UserRole + 1, QStringList() << modelName);
+                    txItem->setIcon(0, QIcon(":/icons/node.svg"));
+                }
+
+                // -------------------------
+                // Add <Receivers>
+                // -------------------------
+                QTreeWidgetItem* receiversCategory = new QTreeWidgetItem(networkItem, QStringList("<Receivers>"));
+                receiversCategory->setData(0, Qt::UserRole, "Collapsible");
+                receiversCategory->setExpanded(true);
+
+                QList<QString> receivers = networkReceivers.value(networkName).values();
+                std::sort(receivers.begin(), receivers.end(), [](const QString& a, const QString& b) {
+                    return a.toLower() < b.toLower();
+                });
+                for (const QString& rx : receivers) {
+                    QTreeWidgetItem* rxItem = new QTreeWidgetItem(receiversCategory, QStringList(rx));
+                    rxItem->setData(0, Qt::UserRole, "Node");
+                    rxItem->setData(0, Qt::UserRole + 1, QStringList() << modelName);
+                    rxItem->setIcon(0, QIcon(":/icons/node.svg"));
+                }
             }
         }
-    }
-
-    // After populating, sort children alphabetically
-    QList<QTreeWidgetItem*> topLevelBuses = this->findItems("Buses", Qt::MatchExactly, 0);
-    if (!topLevelBuses.isEmpty()) {
-        QTreeWidgetItem* busesItem = topLevelBuses.first();
-        busesItem->sortChildren(0, Qt::AscendingOrder);
-    }
-
-    QList<QTreeWidgetItem*> topLevelECUs = this->findItems("ECUs", Qt::MatchExactly, 0);
-    if (!topLevelECUs.isEmpty()) {
-        QTreeWidgetItem* ecusItem = topLevelECUs.first();
-        ecusItem->sortChildren(0, Qt::AscendingOrder);
-    }
-
-    QList<QTreeWidgetItem*> topLevelMessages = this->findItems("Messages", Qt::MatchExactly, 0);
-    if (!topLevelMessages.isEmpty()) {
-        QTreeWidgetItem* messagesItem = topLevelMessages.first();
-        messagesItem->sortChildren(0, Qt::AscendingOrder);
     }
 }

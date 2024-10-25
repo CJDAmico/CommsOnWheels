@@ -7,7 +7,7 @@
 #include <QJsonArray>
 #include <QVariant>
 
-class Bus {
+class Network {
     public:
         QString name;            // Required
         QString baud;            // Required, one of ["250k", "500k", "1M"]
@@ -18,18 +18,19 @@ class TxRxMessage {
         QString name;            // Required, must match entry from top-level 'messages'
 };
 
-class NodeBus {
-    public:
-        QString name;                // Required, must match entry from top-level 'buses'
-        int sourceAddress;           // Required, 0-255 inclusive
-        QList<TxRxMessage> tx;       // Optional, defaults to empty list
-        QList<TxRxMessage> rx;       // Optional, defaults to empty list
+// Associates a Node with a Network (think of it like a relation Table in a database)
+struct NodeNetworkAssociation {
+    QString networkName;             // Reference to a Network's name
+    int sourceAddress = 0;           // Required, 0-255 inclusive
+    QList<TxRxMessage> tx;           // Optional, defaults to empty list
+    QList<TxRxMessage> rx;           // Optional, defaults to empty list
 };
 
-class ECU {
+// Node Class
+class Node {
     public:
-        QString name;
-        QList<NodeBus> buses; // Optional, default to empty list
+        QString name;                            // Required, must match entry from top-level 'Networks'
+        QList<NodeNetworkAssociation> networks;  // Associations with Networks
 };
 
 class Enumeration {
@@ -66,7 +67,8 @@ class Message {
         int length;              // Required
         int txPeriodicity;       // Optional, defaults to 0
         bool txOnChange;         // Optional, defaults to false
-        QList<Signal> data;      // Optional, defaults to empty list
+        QList<Signal> messageSignals;      // Optional, defaults to empty list
+        QList<Network> messageNetworks;      // Optional, defaults to empty list
 };
 
 class DbcDataModel {
@@ -78,15 +80,15 @@ class DbcDataModel {
         bool importDBC(const QString& filePath);
         QString fileName() const;
 
-        QList<Bus> buses() const;
+        QList<Network> networks() const;
+        QList<Node> nodes() const;
         QList<Message> messages() const;
-        QList<ECU> ecus() const;
 
     private:
         QString m_fileName;
-        QList<Bus> m_buses;
+        QList<Network> m_networks;
+        QList<Node> m_nodes;
         QList<Message> m_messages;
-        QList<ECU> m_ecus;
 
         void parseJson(const QJsonObject& jsonObject);
 };
