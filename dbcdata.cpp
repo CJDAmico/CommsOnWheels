@@ -21,7 +21,79 @@ QString DbcDataModel::fileName() const
 
 bool DbcDataModel::importDBC(const QString& filePath) {
     // TODO: Implement parsing DBC and filling m_Networkes, m_messages, and m_nodes with a list of their corresponding classes (Look into parseJSON for example)
-    return false;
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qWarning() << "Couldn't open DBC file:" << filePath;
+        return false;
+    }
+
+    QTextStream in(&file);
+    QString line;
+
+    // Clear existing data
+    m_networks.clear();
+    m_nodes.clear();
+    m_messages.clear();
+
+    while (!in.atEnd()) {
+        line = in.readLine().trimmed();
+
+        // Parse Network definitions
+        if (line.startsWith("BU_")) {
+            // Parse the network definition
+            while (!line.isEmpty()) {
+                QStringList parts = line.split(" ", Qt::SkipEmptyParts);
+                if (parts.size() >= 2) {
+                    Network network;
+                    network.name = parts[1];
+                    network.baud = "500k";  // Default baud rate; can be updated if specified elsewhere
+                    m_networks.append(network);
+                }
+                line = in.readLine().trimmed();
+            }
+        }
+
+        // Parse Message definitions
+        else if (line.startsWith("BO_")) {
+            // Parse message definition
+            QStringList parts = line.split(" ", Qt::SkipEmptyParts);
+            if (parts.size() >= 6) {
+                Message message;
+                message.pgn = parts[1].toULongLong(); // Parses PGN as an unsigned long long integer
+                message.name = parts[2];
+                message.length = parts[3].toInt();
+                message.priority = parts[4].toInt();
+                message.txPeriodicity = 0;  // Default
+                message.txOnChange = false;  // Default
+
+                // Read further lines for signals until another message or node definition is encountered
+                while (!(line = in.readLine().trimmed()).isEmpty() && !line.startsWith("BO_")) {
+                    if (line.startsWith("SG_")) {
+                        // Parse signal
+                        QStringList signalParts = line.split(" ", Qt::SkipEmptyParts);
+                        Signal signal;
+                        signal.spn = signalParts[1].toInt();
+                        signal.name = signalParts[2];
+                        signal.startBit = signalParts[3].toInt();
+                        signal.bitLength = signalParts[4].toInt();
+                        signal.isBigEndian = (signalParts[5] == "1");  // Assume next is endian
+                        signal.isTwosComplement = (signalParts[6] == "1");  // Assume next is twos complement
+                        signal.factor = signalParts[7].toDouble();
+                        signal.offset = signalParts[8].toDouble();
+                        signal.units = signalParts[9];
+
+                        // Add to message's signals
+                        message.messageSignals.append(signal);
+                    }
+                }
+                m_messages.append(message);
+            }
+        }
+
+    }
+
+    file.close();
+    return true;
 }
 
 bool DbcDataModel::loadJson(const QString& filePath) {
