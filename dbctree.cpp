@@ -54,11 +54,16 @@ void DbcTree::dropEvent(QDropEvent *event) {
 
 
 // Helper function to find or create a child item
-QTreeWidgetItem* findOrCreateItem(QTreeWidgetItem* parent, const QString& name, const QString& type, const QStringList& modelNames, const QString& iconPath = "")
+QTreeWidgetItem* findOrCreateItem(QTreeWidgetItem* parent, const QString& name, const QString& type,
+                                  const QStringList& modelNames, const QString& uniqueKey = "",
+                                  const QString& iconPath = "")
 {
     for (int i = 0; i < parent->childCount(); ++i) {
         QTreeWidgetItem* child = parent->child(i);
-        if (child->text(0) == name && child->data(0, Qt::UserRole).toString() == type) {
+        bool keysMatch = uniqueKey.isEmpty() || (child->data(0, Qt::UserRole + 2).toString() == uniqueKey);
+        if (child->text(0) == name &&
+            child->data(0, Qt::UserRole).toString() == type &&
+            keysMatch) {
             // Update model names if necessary
             QStringList existingModels = child->data(0, Qt::UserRole + 1).toStringList();
             QStringList newModels = modelNames;
@@ -72,8 +77,11 @@ QTreeWidgetItem* findOrCreateItem(QTreeWidgetItem* parent, const QString& name, 
 
     // Create new child item
     QTreeWidgetItem* newItem = new QTreeWidgetItem(parent, QStringList(name));
-    newItem->setData(0, Qt::UserRole, type); // Set the type
-    newItem->setData(0, Qt::UserRole + 1, modelNames); // Set associated models
+    newItem->setData(0, Qt::UserRole, type);                   // Set the type
+    newItem->setData(0, Qt::UserRole + 1, modelNames);         // Set associated models
+    if (!uniqueKey.isEmpty()) {
+        newItem->setData(0, Qt::UserRole + 2, uniqueKey);      // Set the unique key if provided
+    }
 
     // Set icon if provided
     if (!iconPath.isEmpty()) {
@@ -82,6 +90,8 @@ QTreeWidgetItem* findOrCreateItem(QTreeWidgetItem* parent, const QString& name, 
 
     return newItem;
 }
+
+
 
 // Function to find a message by name
 const Message* findMessage(const QList<Message>& messages, const QString& name)
@@ -119,15 +129,20 @@ void DbcTree::populateTree(const QList<DbcDataModel*>& models)
         // Populate <Networks> Section
         // -------------------------
         for (const Network& network : model->networks()) {
-            // Create or find the network item under <Networks>
-            QTreeWidgetItem* networkItem = findOrCreateItem(networksCategory, network.name, "Network", QStringList() << modelName, ":/icons/network.svg");
+            // No uniqueKey for networks
+            QTreeWidgetItem* networkItem = findOrCreateItem(networksCategory, network.name, "Network",
+                                                            QStringList() << modelName, /*uniqueKey=*/"",
+                                                            ":/icons/network.svg");
 
             // Iterate through Nodes to find those associated with this network
             for (const Node& node : model->nodes()) {
                 for (const NodeNetworkAssociation& nodeNetwork : node.networks) {
                     if (nodeNetwork.networkName == network.name) {
+                        QString uniqueNodeKey = node.name + "::" + nodeNetwork.networkName;
                         // Create or find the node under this network
-                        QTreeWidgetItem* nodeItem = findOrCreateItem(networkItem, node.name, "Node", QStringList() << modelName, ":/icons/node.svg");
+                        QTreeWidgetItem* nodeItem = findOrCreateItem(networkItem, node.name, "Node",
+                                                                     QStringList() << modelName, uniqueNodeKey,
+                                                                     ":/icons/node.svg");
 
                         // -------------------------
                         // Add <Transmitted Messages>
@@ -137,9 +152,14 @@ void DbcTree::populateTree(const QList<DbcDataModel*>& models)
                         txMessagesCategory->setExpanded(true);
 
                         for (const TxRxMessage& txMsg : nodeNetwork.tx) {
+                            // Find the message in the model to get its PGN
+                            const Message* message = findMessage(model->messages(), txMsg.name);
+                            QString uniqueMessageKey = message ? QString::number(message->pgn) : txMsg.name;
+
                             QTreeWidgetItem* txMsgItem = new QTreeWidgetItem(txMessagesCategory, QStringList(txMsg.name));
                             txMsgItem->setData(0, Qt::UserRole, "TxMessage");
                             txMsgItem->setData(0, Qt::UserRole + 1, QStringList() << modelName);
+                            txMsgItem->setData(0, Qt::UserRole + 2, uniqueMessageKey);
                             txMsgItem->setIcon(0, QIcon(":/icons/message.svg"));
 
                             // Add <Signals> under TxMessage
@@ -147,12 +167,12 @@ void DbcTree::populateTree(const QList<DbcDataModel*>& models)
                             signalsCategory->setData(0, Qt::UserRole, "Collapsible");
                             signalsCategory->setExpanded(true);
 
-                            const Message* message = findMessage(model->messages(), txMsg.name);
                             if (message) {
                                 for (const Signal& signal : message->messageSignals) {
                                     QTreeWidgetItem* signalItem = new QTreeWidgetItem(signalsCategory, QStringList(signal.name));
                                     signalItem->setData(0, Qt::UserRole, "Signal");
                                     signalItem->setData(0, Qt::UserRole + 1, QStringList() << modelName);
+                                    // No uniqueKey for signals in this context
                                     signalItem->setIcon(0, QIcon(":/icons/signal.svg"));
                                 }
                             }
@@ -166,9 +186,14 @@ void DbcTree::populateTree(const QList<DbcDataModel*>& models)
                         rxMessagesCategory->setExpanded(true);
 
                         for (const TxRxMessage& rxMsg : nodeNetwork.rx) {
+                            // Find the message in the model to get its PGN
+                            const Message* message = findMessage(model->messages(), rxMsg.name);
+                            QString uniqueMessageKey = message ? QString::number(message->pgn) : rxMsg.name;
+
                             QTreeWidgetItem* rxMsgItem = new QTreeWidgetItem(rxMessagesCategory, QStringList(rxMsg.name));
                             rxMsgItem->setData(0, Qt::UserRole, "RxMessage");
                             rxMsgItem->setData(0, Qt::UserRole + 1, QStringList() << modelName);
+                            rxMsgItem->setData(0, Qt::UserRole + 2, uniqueMessageKey);
                             rxMsgItem->setIcon(0, QIcon(":/icons/message.svg"));
 
                             // Add <Signals> under RxMessage
@@ -176,12 +201,12 @@ void DbcTree::populateTree(const QList<DbcDataModel*>& models)
                             signalsCategory->setData(0, Qt::UserRole, "Collapsible");
                             signalsCategory->setExpanded(true);
 
-                            const Message* message = findMessage(model->messages(), rxMsg.name);
                             if (message) {
                                 for (const Signal& signal : message->messageSignals) {
                                     QTreeWidgetItem* signalItem = new QTreeWidgetItem(signalsCategory, QStringList(signal.name));
                                     signalItem->setData(0, Qt::UserRole, "Signal");
                                     signalItem->setData(0, Qt::UserRole + 1, QStringList() << modelName);
+                                    // No uniqueKey for signals in this context
                                     signalItem->setIcon(0, QIcon(":/icons/signal.svg"));
                                 }
                             }
@@ -195,10 +220,15 @@ void DbcTree::populateTree(const QList<DbcDataModel*>& models)
         // Populate <Nodes> Section
         // -------------------------
         for (const Node& node : model->nodes()) {
-            QTreeWidgetItem* nodeItem = findOrCreateItem(nodesCategory, node.name, "Node", QStringList() << modelName, ":/icons/node.svg");
+            QString uniqueNodeKey = node.name + "::" + modelName;
+            QTreeWidgetItem* nodeItem = findOrCreateItem(nodesCategory, node.name, "Node",
+                                                         QStringList() << modelName, uniqueNodeKey,
+                                                         ":/icons/node.svg");
 
             for (const NodeNetworkAssociation& nodeNetwork : node.networks) {
-                QTreeWidgetItem* networkUnderNode = findOrCreateItem(nodeItem, nodeNetwork.networkName, "Network", QStringList() << modelName, ":/icons/network.svg");
+                QTreeWidgetItem* networkUnderNode = findOrCreateItem(nodeItem, nodeNetwork.networkName, "Network",
+                                                                     QStringList() << modelName, /*uniqueKey=*/"",
+                                                                     ":/icons/network.svg");
 
                 // -------------------------
                 // Add <Transmitted Messages>
@@ -208,9 +238,14 @@ void DbcTree::populateTree(const QList<DbcDataModel*>& models)
                 txMessagesCategory->setExpanded(true);
 
                 for (const TxRxMessage& txMsg : nodeNetwork.tx) {
+                    // Find the message in the model to get its PGN
+                    const Message* message = findMessage(model->messages(), txMsg.name);
+                    QString uniqueMessageKey = message ? QString::number(message->pgn) : txMsg.name;
+
                     QTreeWidgetItem* txMsgItem = new QTreeWidgetItem(txMessagesCategory, QStringList(txMsg.name));
                     txMsgItem->setData(0, Qt::UserRole, "TxMessage");
                     txMsgItem->setData(0, Qt::UserRole + 1, QStringList() << modelName);
+                    txMsgItem->setData(0, Qt::UserRole + 2, uniqueMessageKey);
                     txMsgItem->setIcon(0, QIcon(":/icons/message.svg"));
 
                     // Add <Signals> under TxMessage
@@ -218,12 +253,12 @@ void DbcTree::populateTree(const QList<DbcDataModel*>& models)
                     signalsCategory->setData(0, Qt::UserRole, "Collapsible");
                     signalsCategory->setExpanded(true);
 
-                    const Message* message = findMessage(model->messages(), txMsg.name);
                     if (message) {
                         for (const Signal& signal : message->messageSignals) {
                             QTreeWidgetItem* signalItem = new QTreeWidgetItem(signalsCategory, QStringList(signal.name));
                             signalItem->setData(0, Qt::UserRole, "Signal");
                             signalItem->setData(0, Qt::UserRole + 1, QStringList() << modelName);
+                            // No uniqueKey for signals in this context
                             signalItem->setIcon(0, QIcon(":/icons/signal.svg"));
                         }
                     }
@@ -237,9 +272,14 @@ void DbcTree::populateTree(const QList<DbcDataModel*>& models)
                 rxMessagesCategory->setExpanded(true);
 
                 for (const TxRxMessage& rxMsg : nodeNetwork.rx) {
+                    // Find the message in the model to get its PGN
+                    const Message* message = findMessage(model->messages(), rxMsg.name);
+                    QString uniqueMessageKey = message ? QString::number(message->pgn) : rxMsg.name;
+
                     QTreeWidgetItem* rxMsgItem = new QTreeWidgetItem(rxMessagesCategory, QStringList(rxMsg.name));
                     rxMsgItem->setData(0, Qt::UserRole, "RxMessage");
                     rxMsgItem->setData(0, Qt::UserRole + 1, QStringList() << modelName);
+                    rxMsgItem->setData(0, Qt::UserRole + 2, uniqueMessageKey);
                     rxMsgItem->setIcon(0, QIcon(":/icons/message.svg"));
 
                     // Add <Signals> under RxMessage
@@ -247,12 +287,12 @@ void DbcTree::populateTree(const QList<DbcDataModel*>& models)
                     signalsCategory->setData(0, Qt::UserRole, "Collapsible");
                     signalsCategory->setExpanded(true);
 
-                    const Message* message = findMessage(model->messages(), rxMsg.name);
                     if (message) {
                         for (const Signal& signal : message->messageSignals) {
                             QTreeWidgetItem* signalItem = new QTreeWidgetItem(signalsCategory, QStringList(signal.name));
                             signalItem->setData(0, Qt::UserRole, "Signal");
                             signalItem->setData(0, Qt::UserRole + 1, QStringList() << modelName);
+                            // No uniqueKey for signals in this context
                             signalItem->setIcon(0, QIcon(":/icons/signal.svg"));
                         }
                     }
@@ -264,7 +304,10 @@ void DbcTree::populateTree(const QList<DbcDataModel*>& models)
         // Populate <Messages> Section
         // -------------------------
         for (const Message& message : model->messages()) {
-            QTreeWidgetItem* messageItem = findOrCreateItem(messagesCategory, message.name, "Message", QStringList() << modelName, ":/icons/message.svg");
+            QString uniqueMessageKey = QString::number(message.pgn);
+            QTreeWidgetItem* messageItem = findOrCreateItem(messagesCategory, message.name, "Message",
+                                                            QStringList() << modelName, uniqueMessageKey,
+                                                            ":/icons/message.svg");
 
             // -------------------------
             // Add <Signals> under Message
@@ -277,6 +320,7 @@ void DbcTree::populateTree(const QList<DbcDataModel*>& models)
                 QTreeWidgetItem* signalItem = new QTreeWidgetItem(signalsCategory, QStringList(signal.name));
                 signalItem->setData(0, Qt::UserRole, "Signal");
                 signalItem->setData(0, Qt::UserRole + 1, QStringList() << modelName);
+                // No uniqueKey for signals in this context
                 signalItem->setIcon(0, QIcon(":/icons/signal.svg"));
             }
 
@@ -316,7 +360,10 @@ void DbcTree::populateTree(const QList<DbcDataModel*>& models)
             });
 
             for (const QString& networkName : sortedNetworks) {
-                QTreeWidgetItem* networkItem = findOrCreateItem(networksUnderMessage, networkName, "Network", QStringList() << modelName, ":/icons/network.svg");
+                // No uniqueKey for networks under messages
+                QTreeWidgetItem* networkItem = findOrCreateItem(networksUnderMessage, networkName, "Network",
+                                                                QStringList() << modelName, /*uniqueKey=*/"",
+                                                                ":/icons/network.svg");
 
                 // -------------------------
                 // Add <Transmitters>
@@ -330,10 +377,8 @@ void DbcTree::populateTree(const QList<DbcDataModel*>& models)
                     return a.toLower() < b.toLower();
                 });
                 for (const QString& tx : transmitters) {
-                    QTreeWidgetItem* txItem = new QTreeWidgetItem(transmittersCategory, QStringList(tx));
-                    txItem->setData(0, Qt::UserRole, "Node");
-                    txItem->setData(0, Qt::UserRole + 1, QStringList() << modelName);
-                    txItem->setIcon(0, QIcon(":/icons/node.svg"));
+                    QString uniqueNodeKey = tx + "::" + networkName;
+                    findOrCreateItem(transmittersCategory, tx, "Node", QStringList() << modelName, uniqueNodeKey, ":/icons/node.svg");
                 }
 
                 // -------------------------
@@ -348,12 +393,11 @@ void DbcTree::populateTree(const QList<DbcDataModel*>& models)
                     return a.toLower() < b.toLower();
                 });
                 for (const QString& rx : receivers) {
-                    QTreeWidgetItem* rxItem = new QTreeWidgetItem(receiversCategory, QStringList(rx));
-                    rxItem->setData(0, Qt::UserRole, "Node");
-                    rxItem->setData(0, Qt::UserRole + 1, QStringList() << modelName);
-                    rxItem->setIcon(0, QIcon(":/icons/node.svg"));
+                    QString uniqueNodeKey = rx + "::" + networkName;
+                    findOrCreateItem(receiversCategory, rx, "Node", QStringList() << modelName, uniqueNodeKey, ":/icons/node.svg");
                 }
             }
         }
     }
 }
+
