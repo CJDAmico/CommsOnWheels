@@ -47,7 +47,7 @@ bool DbcDataModel::importDBC(const QString& filePath) {
     while (!in.atEnd()) {
         QString line = in.readLine().trimmed();
 
-        QRegularExpressionMatch messageMatch = messageRegex.match(line);
+        static QRegularExpressionMatch messageMatch = messageRegex.match(line);
         if (messageMatch.hasMatch()) {
             Message message;
             message.pgn = messageMatch.captured(1).toULongLong();
