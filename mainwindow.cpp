@@ -387,27 +387,26 @@ void MainWindow::handleMessageItem(QTreeWidgetItem* item, const QString& name, c
         return;
     }
 
-    QString itemType = item->data(0, Qt::UserRole).toString();
+    // Retrieve the uniqueKey (which is the message's PGN)
+    QString uniqueKey = item->data(0, Qt::UserRole + 2).toString();
+
     const Message* message = nullptr;
-    QString txRxType; // "Transmitted" or "Received"
-
-    // Directly search for the message by the item's own name
-    if (itemType == "Message" || itemType == "TxMessage" || itemType == "RxMessage") {
-        if (itemType == "TxMessage" || itemType == "RxMessage") {
-            txRxType = (itemType == "TxMessage") ? "Transmitted" : "Received";
-        }
-
-        for (const Message& msg : model->messages()) {
-            if (msg.name.trimmed().compare(name.trimmed(), Qt::CaseInsensitive) == 0) {
-                message = &msg;
-                break;
-            }
+    for (const Message& msg : model->messages()) {
+        if (QString::number(msg.pgn) == uniqueKey) {
+            message = &msg;
+            break;
         }
     }
 
     if (!message) {
         QMessageBox::warning(this, "Error", "Message not found in the model.");
         return;
+    }
+
+    QString txRxType;
+    QString itemType = item->data(0, Qt::UserRole).toString();
+    if (itemType == "TxMessage" || itemType == "RxMessage") {
+        txRxType = (itemType == "TxMessage") ? "Transmitted" : "Received";
     }
 
     // Populate Definition tab
@@ -439,8 +438,38 @@ void MainWindow::handleMessageItem(QTreeWidgetItem* item, const QString& name, c
         rightPanel->addTab(definitionTab, "Definition");
     }
 
+    // Update transmitters table
+    transmittersTable->setRowCount(0);
+    for(const std::pair<QString, QString>& pair : message->messageTransmitters) {
+        addAttributeRow(transmittersTable, {pair.first, pair.second});
+    }
+
+    // Show transmitters tab
+    if (rightPanel->indexOf(transmittersTab) == -1) {
+        rightPanel->addTab(transmittersTab, "Transmitters");
+    }
+
+    // Update receivers table
+    receiversTable->setRowCount(0);
+    for(const std::pair<QString, QString>& pair : message->messageReceivers) {
+        addAttributeRow(receiversTable, {pair.first, pair.second});
+    }
+
+    // Show receivers tab
+    if (rightPanel->indexOf(receiversTab) == -1) {
+        rightPanel->addTab(receiversTab, "Receivers");
+    }
+
+    // Update layout table
+    displayBitLayout(*message);
+    // Show layout tab
+    if (rightPanel->indexOf(layoutTab) == -1) {
+        rightPanel->addTab(layoutTab, "Layout");
+    }
+
     rightPanel->setCurrentWidget(definitionTab);
 }
+
 
 void MainWindow::handleSignalItem(QTreeWidgetItem* item, const QString& name, const QStringList& models)
 {
@@ -463,7 +492,7 @@ void MainWindow::handleSignalItem(QTreeWidgetItem* item, const QString& name, co
         return;
     }
 
-    // Find parent message (grandparent of the signal item)
+    // Retrieve the uniqueKey of the parent message
     QTreeWidgetItem* signalsCategory = item->parent();
     if (!signalsCategory || signalsCategory->text(0) != "<Signals>") {
         QMessageBox::warning(this, "Error", "Parent <Signals> category not found.");
@@ -476,17 +505,11 @@ void MainWindow::handleSignalItem(QTreeWidgetItem* item, const QString& name, co
         return;
     }
 
-    QString parentType = parentItem->data(0, Qt::UserRole).toString();
-    if (parentType != "Message" && parentType != "TxMessage" && parentType != "RxMessage") {
-        QMessageBox::warning(this, "Error", "Parent item is not a message.");
-        return;
-    }
-
-    QString messageName = parentItem->text(0).trimmed();
+    QString messageUniqueKey = parentItem->data(0, Qt::UserRole + 2).toString();
 
     const Message* message = nullptr;
     for (const Message& msg : model->messages()) {
-        if (msg.name.trimmed().compare(messageName, Qt::CaseInsensitive) == 0) {
+        if (QString::number(msg.pgn) == messageUniqueKey) {
             message = &msg;
             break;
         }
@@ -497,12 +520,10 @@ void MainWindow::handleSignalItem(QTreeWidgetItem* item, const QString& name, co
         return;
     }
 
-    // Extract signal name
-    QString signalName = name.trimmed();
-
+    // Find the signal by name
     const Signal* signal = nullptr;
     for (const Signal& sig : message->messageSignals) {
-        if (sig.name.trimmed().compare(signalName, Qt::CaseInsensitive) == 0) {
+        if (sig.name.trimmed() == name.trimmed()) {
             signal = &sig;
             break;
         }
@@ -641,7 +662,7 @@ void MainWindow::handleNodeItem(QTreeWidgetItem* item, const QString& name, cons
 
     const Node* node = nullptr;
     for (const Node& n : model->nodes()) {
-        if (n.name.trimmed().compare(name.trimmed(), Qt::CaseInsensitive) == 0) {
+        if (n.name.trimmed() == name) {
             node = &n;
             break;
         }
@@ -657,11 +678,12 @@ void MainWindow::handleNodeItem(QTreeWidgetItem* item, const QString& name, cons
 
     // Show the node tab
     if (rightPanel->indexOf(nodeTab) == -1) {
-        rightPanel->addTab(nodeTab, "node");
+        rightPanel->addTab(nodeTab, "Node");
     }
 
     rightPanel->setCurrentWidget(nodeTab);
 }
+
 
 
 void MainWindow::setupRightPanel()
@@ -671,6 +693,17 @@ void MainWindow::setupRightPanel()
     // Definition Tab (for Messages)
     definitionTab = new QWidget;
     definitionFormLayout = new QFormLayout;
+
+    // Transmitters and Receivers Tab
+    transmittersTab = new QWidget;
+    receiversTab = new QWidget;
+    transmittersFormLayout = new QFormLayout;
+    receiversFormLayout = new QFormLayout;
+    layoutFormLayout = new QFormLayout;
+
+    // Layout Tab
+    layoutTab = new QWidget;
+
 
     // Initialize widgets
     pgnLineEdit = new QLineEdit;
@@ -682,6 +715,9 @@ void MainWindow::setupRightPanel()
     dataPageCheckBox = new QCheckBox;
     attributesTable = new QTableWidget;
     signalsList = new QListWidget;
+    transmittersTable = new QTableWidget;
+    receiversTable = new QTableWidget;
+    bitGrid = new QTableWidget;
 
     // Set up the Definition Form Layout
     definitionFormLayout->addRow("PGN:", pgnLineEdit);
@@ -698,8 +734,25 @@ void MainWindow::setupRightPanel()
     definitionFormLayout->addRow(attributesTable);
     definitionFormLayout->addRow(new QLabel("Signals:"));
     definitionFormLayout->addRow(signalsList);
-
     definitionTab->setLayout(definitionFormLayout);
+
+    // Set up Transmitters form
+    transmittersTable->setColumnCount(2);
+    transmittersTable->setHorizontalHeaderLabels({"Name", "Address"});
+    transmittersTable->horizontalHeader()->setStretchLastSection(true);
+    transmittersFormLayout->addRow(transmittersTable);
+    transmittersTab->setLayout(transmittersFormLayout);
+
+    // Set up Receivers form
+    receiversTable->setColumnCount(2);
+    receiversTable->setHorizontalHeaderLabels({"Name", "Address"});
+    receiversTable->horizontalHeader()->setStretchLastSection(true);
+    receiversFormLayout->addRow(receiversTable);
+    receiversTab->setLayout(receiversFormLayout);
+
+    // Set up Layout form
+    layoutFormLayout->addRow(bitGrid);
+    layoutTab->setLayout(layoutFormLayout);
 
     // Network Tab
     networkTab = new QWidget;
@@ -714,7 +767,7 @@ void MainWindow::setupRightPanel()
     nodeTab = new QWidget;
     nodeFormLayout = new QFormLayout;
     nodeNameLineEdit = new QLineEdit;
-    nodeFormLayout->addRow("node Name:", nodeNameLineEdit);
+    nodeFormLayout->addRow("Node Name:", nodeNameLineEdit);
     nodeTab->setLayout(nodeFormLayout);
 
     // Signal Tab
@@ -752,15 +805,22 @@ void MainWindow::setupRightPanel()
 
     // Initialize all tabs
     rightPanel->addTab(definitionTab, "Definition");
+    rightPanel->addTab(transmittersTab, "Transmitters");
+    rightPanel->addTab(receiversTab, "Receivers");
+    rightPanel->addTab(layoutTab, "Layout");
     rightPanel->addTab(networkTab, "Network");
     rightPanel->addTab(signalTab, "Signal");
-    rightPanel->addTab(nodeTab, "Node"); //
+    rightPanel->addTab(nodeTab, "Node");
     // Hide all tabs initially
     rightPanel->removeTab(rightPanel->indexOf(definitionTab));
     rightPanel->removeTab(rightPanel->indexOf(networkTab));
     rightPanel->removeTab(rightPanel->indexOf(signalTab));
-    // rightPanel->removeTab(rightPanel->indexOf(nodeTab));
+    rightPanel->removeTab(rightPanel->indexOf(nodeTab));
+    rightPanel->removeTab(rightPanel->indexOf(transmittersTab));
+    rightPanel->removeTab(rightPanel->indexOf(receiversTab));
+    rightPanel->removeTab(rightPanel->indexOf(layoutTab));
 }
+
 
 void MainWindow::clearRightPanel()
 {
@@ -779,6 +839,10 @@ void MainWindow::clearRightPanel()
     extendedDataPageCheckBox->setChecked(false);
     dataPageCheckBox->setChecked(false);
     attributesTable->setRowCount(0);
+    transmittersTable->setRowCount(0);
+    receiversTable->setRowCount(0);
+    bitGrid->setRowCount(0);
+    bitGrid->setColumnCount(0);
     signalsList->clear();
 
     // Node Tab
@@ -801,6 +865,64 @@ void MainWindow::clearRightPanel()
     unitsLineEdit->clear();
     enumerationsTable->setRowCount(0);
 }
+
+
+void MainWindow::displayBitLayout(const Message& message) {
+    int messageLength = message.length * 8;  // Convert message length from bytes to bits
+
+    // Clear existing grid content
+    bitGrid->clear();
+    bitGrid->setRowCount((messageLength + 7) / 8); // Each row represents a byte (8 bits)
+    bitGrid->setColumnCount(8); // Fixed 8 columns to represent 8 bits per byte
+
+    // Set up column headers to show bit positions (7 to 0)
+    for (int i = 0; i < 8; ++i) {
+        bitGrid->setHorizontalHeaderItem(i, new QTableWidgetItem(QString::number(7 - i)));
+    }
+
+    // Set up row headers to indicate byte index
+    for (int row = 0; row < bitGrid->rowCount(); ++row) {
+        bitGrid->setVerticalHeaderItem(row, new QTableWidgetItem(QString::number(row)));
+    }
+
+    // Reset color index for this message:
+    colorsIndex = 0;
+    // Populate the grid based on each signal's bit allocation
+    for (const Signal& signal : message.messageSignals) {
+        int startBit = signal.startBit;
+
+        int currentRow = startBit / 8;
+        int currentCol = startBit % 8;
+        int bitsRemaining = signal.bitLength;
+        int spanLength;
+
+        while (bitsRemaining > 0) {
+            // Determine the span for this part of the signal within the current row
+            spanLength = std::min(bitsRemaining, 8 - currentCol);
+
+            // Create a QTableWidgetItem and set properties
+            QTableWidgetItem* item = new QTableWidgetItem(signal.name);
+            item->setToolTip(signal.description);
+            item->setBackground(signalColors[colorsIndex]);
+            item->setTextAlignment(Qt::AlignCenter);
+
+            // Set the item and apply the span if the signal extends across multiple columns
+            bitGrid->setItem(currentRow, currentCol, item);
+            if (spanLength > 1) {
+                bitGrid->setSpan(currentRow, currentCol, 1, spanLength);
+            }
+
+            // Move to the next row if more bits remain for this signal
+            bitsRemaining -= spanLength;
+            currentRow++;
+            currentCol = 0; // Reset column to the start of the next row
+        }
+
+        // Increment color index for the next signal
+        colorsIndex++;
+    }
+}
+
 
 
 

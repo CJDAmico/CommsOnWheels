@@ -7,10 +7,12 @@
 #include <QJsonArray>
 #include <QVariant>
 
-class Network {
+
+class Attribute {
     public:
-        QString name;            // Required
-        QString baud;            // Required, one of ["250k", "500k", "1M"]
+        QString name;
+        QString type;
+        QString value;
 };
 
 class TxRxMessage {
@@ -18,7 +20,13 @@ class TxRxMessage {
         QString name;            // Required, must match entry from top-level 'messages'
 };
 
-// Associates a Node with a Network (think of it like a relation Table in a database)
+class Network {
+    public:
+        QString name;            // Required
+        QString baud;            // Required, one of ["250k", "500k", "1M"]
+        QList<Attribute> networkAttributes;  // Optional, defaults to empty list
+};
+
 struct NodeNetworkAssociation {
     QString networkName;             // Reference to a Network's name
     int sourceAddress = 0;           // Required, 0-255 inclusive
@@ -31,6 +39,7 @@ class Node {
     public:
         QString name;                            // Required, must match entry from top-level 'Networks'
         QList<NodeNetworkAssociation> networks;  // Associations with Networks
+        QList<Attribute> nodeAttributes;  // Optional, defaults to empty list
 };
 
 class Enumeration {
@@ -56,6 +65,7 @@ class Signal {
         QVariant scaledMax;      // Optional, defaults to null
         QVariant scaledDefault;  // Optional, defaults to same as scaledMin
         QList<Enumeration> enumerations; // Optional, defaults to empty list
+        QList<Attribute> signalAttributes;  // Optional, defaults to empty list
 };
 
 class Message {
@@ -69,6 +79,9 @@ class Message {
         bool txOnChange;         // Optional, defaults to false
         QList<Signal> messageSignals;      // Optional, defaults to empty list
         QList<Network> messageNetworks;      // Optional, defaults to empty list
+        QList<Attribute> messageAttributes;  // Optional, defaults to empty list
+        QList<std::pair<QString, QString>> messageTransmitters; // Pair of transmitting node name and source address
+        QList<std::pair<QString, QString>> messageReceivers;    // Pair of receiving node name and source address
 };
 
 class DbcDataModel {
