@@ -410,7 +410,7 @@ void MainWindow::handleMessageItem(QTreeWidgetItem* item, const QString& name, c
     }
 
     // Populate Definition tab
-    pgnLineEdit->setText(QString::number(message->pgn));
+    pgnLineEdit->setText(QString("0x") + QString::number(message->pgn, 16).toUpper());
     QString displayName = message->name;
     if (!txRxType.isEmpty()) {
         displayName += QString(" (%1)").arg(txRxType); // e.g., "Message1 (Transmitted)"
@@ -552,8 +552,8 @@ void MainWindow::handleSignalItem(QTreeWidgetItem* item, const QString& name, co
         int row = enumerationsTable->rowCount();
         enumerationsTable->insertRow(row);
         enumerationsTable->setItem(row, 0, new QTableWidgetItem(enumVal.name));
-        enumerationsTable->setItem(row, 1, new QTableWidgetItem(enumVal.description));
-        enumerationsTable->setItem(row, 2, new QTableWidgetItem(QString::number(enumVal.value)));
+        enumerationsTable->setItem(row, 1, new QTableWidgetItem(QString::number(enumVal.value)));
+        enumerationsTable->setItem(row, 2, new QTableWidgetItem(enumVal.description));
     }
 
     // Show the Signal tab
@@ -623,18 +623,6 @@ void MainWindow::handleNetworkItem(QTreeWidgetItem* item, const QString& name, c
         rightPanel->addTab(networkTab, "Network");
     }
     rightPanel->setCurrentWidget(networkTab);
-
-    // Adjust the layout for the right panel to be equal size
-    splitter->setStretchFactor(0, 1);
-    splitter->setStretchFactor(1, 1);
-    splitter->updateGeometry();
-
-    int totalWidth = splitter->width();
-    if (totalWidth > 0) {
-        QList<int> sizes;
-        sizes << totalWidth / 2 << totalWidth / 2;
-        splitter->setSizes(sizes);
-    }
 }
 
 
@@ -673,8 +661,22 @@ void MainWindow::handleNodeItem(QTreeWidgetItem* item, const QString& name, cons
         return;
     }
 
-    // Populate Node tab
     nodeNameLineEdit->setText(node->name);
+    nodeAddressTable->setRowCount(0);
+    for (const NodeNetworkAssociation& association : node->networks) {
+        int row = nodeAddressTable->rowCount();
+        nodeAddressTable->insertRow(row);
+
+        // Network Name
+        QTableWidgetItem* networkNameItem = new QTableWidgetItem(association.networkName);
+        networkNameItem->setFlags(networkNameItem->flags() & ~Qt::ItemIsEditable); // Make it read-only
+        nodeAddressTable->setItem(row, 0, networkNameItem);
+
+        // Source Address
+        QTableWidgetItem* sourceAddressItem = new QTableWidgetItem(QString::number(association.sourceAddress));
+        sourceAddressItem->setFlags(sourceAddressItem->flags() & ~Qt::ItemIsEditable); // Make it read-only
+        nodeAddressTable->setItem(row, 1, sourceAddressItem);
+    }
 
     // Show the node tab
     if (rightPanel->indexOf(nodeTab) == -1) {
@@ -688,24 +690,12 @@ void MainWindow::handleNodeItem(QTreeWidgetItem* item, const QString& name, cons
 
 void MainWindow::setupRightPanel()
 {
+    // Initialize widgets
     rightPanel = new QTabWidget;
 
-    // Definition Tab (for Messages)
+    // Definition
     definitionTab = new QWidget;
     definitionFormLayout = new QFormLayout;
-
-    // Transmitters and Receivers Tab
-    transmittersTab = new QWidget;
-    receiversTab = new QWidget;
-    transmittersFormLayout = new QFormLayout;
-    receiversFormLayout = new QFormLayout;
-    layoutFormLayout = new QFormLayout;
-
-    // Layout Tab
-    layoutTab = new QWidget;
-
-
-    // Initialize widgets
     pgnLineEdit = new QLineEdit;
     nameLineEdit = new QLineEdit;
     descLineEdit = new QLineEdit;
@@ -715,9 +705,49 @@ void MainWindow::setupRightPanel()
     dataPageCheckBox = new QCheckBox;
     attributesTable = new QTableWidget;
     signalsList = new QListWidget;
+
+    // Transmitters
+    transmittersTab = new QWidget;
     transmittersTable = new QTableWidget;
+    transmittersFormLayout = new QFormLayout;
+
+    // Receivers
+    receiversTab = new QWidget;
     receiversTable = new QTableWidget;
+    receiversFormLayout = new QFormLayout;
+
+    // Layout
+    layoutTab = new QWidget;
     bitGrid = new QTableWidget;
+    layoutFormLayout = new QFormLayout;
+
+    // Network
+    networkTab = new QWidget;
+    networkFormLayout = new QFormLayout;
+    networkNameLineEdit = new QLineEdit;
+    baudRateLineEdit = new QLineEdit;
+
+    // Node
+    nodeTab = new QWidget;
+    nodeFormLayout = new QFormLayout;
+    nodeNameLineEdit = new QLineEdit;
+    nodeAddressTable = new QTableWidget;
+
+    // Signal
+    signalTab = new QWidget;
+    signalFormLayout = new QFormLayout;
+    spnSpinBox = new QSpinBox;
+    signalNameLineEdit = new QLineEdit;
+    signalDescLineEdit = new QLineEdit;
+    startBitSpinBox = new QSpinBox;
+    bitLengthSpinBox = new QSpinBox;
+    isBigEndianCheckBox = new QCheckBox;
+    isTwosComplementCheckBox = new QCheckBox;
+    factorSpinBox = new QDoubleSpinBox;
+    offsetSpinBox = new QDoubleSpinBox;
+    unitsLineEdit = new QLineEdit;
+    enumerationsTable = new QTableWidget;
+
 
     // Set up the Definition Form Layout
     definitionFormLayout->addRow("PGN:", pgnLineEdit);
@@ -755,36 +785,19 @@ void MainWindow::setupRightPanel()
     layoutTab->setLayout(layoutFormLayout);
 
     // Network Tab
-    networkTab = new QWidget;
-    networkFormLayout = new QFormLayout;
-    networkNameLineEdit = new QLineEdit;
-    baudRateLineEdit = new QLineEdit;
     networkFormLayout->addRow("Network Name:", networkNameLineEdit);
     networkFormLayout->addRow("Baud Rate:", baudRateLineEdit);
     networkTab->setLayout(networkFormLayout);
 
     // Node Tab
-    nodeTab = new QWidget;
-    nodeFormLayout = new QFormLayout;
-    nodeNameLineEdit = new QLineEdit;
+    nodeAddressTable->setColumnCount(2);
+    nodeAddressTable->setHorizontalHeaderLabels({"Network Name", "Source Address"});
     nodeFormLayout->addRow("Node Name:", nodeNameLineEdit);
+    nodeFormLayout->addRow(new QLabel("Node Address:"));
+    nodeFormLayout->addRow(nodeAddressTable);
     nodeTab->setLayout(nodeFormLayout);
 
     // Signal Tab
-    signalTab = new QWidget;
-    signalFormLayout = new QFormLayout;
-    spnSpinBox = new QSpinBox;
-    signalNameLineEdit = new QLineEdit;
-    signalDescLineEdit = new QLineEdit;
-    startBitSpinBox = new QSpinBox;
-    bitLengthSpinBox = new QSpinBox;
-    isBigEndianCheckBox = new QCheckBox;
-    isTwosComplementCheckBox = new QCheckBox;
-    factorSpinBox = new QDoubleSpinBox;
-    offsetSpinBox = new QDoubleSpinBox;
-    unitsLineEdit = new QLineEdit;
-    enumerationsTable = new QTableWidget;
-
     signalFormLayout->addRow("SPN:", spnSpinBox);
     signalFormLayout->addRow("Name:", signalNameLineEdit);
     signalFormLayout->addRow("Description:", signalDescLineEdit);
@@ -797,7 +810,7 @@ void MainWindow::setupRightPanel()
     signalFormLayout->addRow("Units:", unitsLineEdit);
     signalFormLayout->addRow(new QLabel("Enumerations:"));
     enumerationsTable->setColumnCount(3);
-    enumerationsTable->setHorizontalHeaderLabels({"Name", "Description", "Value"});
+    enumerationsTable->setHorizontalHeaderLabels({"Name", "Value", "Description"});
     enumerationsTable->horizontalHeader()->setStretchLastSection(true);
     signalFormLayout->addRow(enumerationsTable);
 
@@ -847,6 +860,7 @@ void MainWindow::clearRightPanel()
 
     // Node Tab
     nodeNameLineEdit->clear();
+    nodeAddressTable->setRowCount(0);
 
     // Network Tab
     networkNameLineEdit->clear();

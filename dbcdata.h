@@ -7,7 +7,6 @@
 #include <QJsonArray>
 #include <QVariant>
 
-
 class Attribute {
     public:
         QString name;
@@ -93,9 +92,9 @@ class DbcDataModel {
         bool importDBC(const QString& filePath);
         QString fileName() const;
 
-        QList<Network> networks() const;
-        QList<Node> nodes() const;
-        QList<Message> messages() const;
+        QList<Network>& networks();
+        QList<Node>& nodes();
+        QList<Message>& messages();
 
     private:
         QString m_fileName;

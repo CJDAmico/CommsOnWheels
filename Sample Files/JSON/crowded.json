@@ -1,0 +1,300 @@
+{
+  "buses": [
+    {
+      "name": "MainBus",
+      "baud": "500k"
+    }
+  ],
+  "messages": [
+    {
+      "pgn": 1000,
+      "name": "Message1",
+      "description": "Message transmitted on MainBus",
+      "priority": 3,
+      "length": 8,
+      "tx_periodicity": 100,
+      "tx_onChange": true,
+      "data": [
+        {
+          "spn": 1001,
+          "name": "Signal1_1",
+          "description": "First signal in Message1",
+          "start_bit": 0,
+          "bit_length": 16,
+          "is_bigEndian": false,
+          "is_twosComplement": false,
+          "factor": 1.0,
+          "offset": 0.0,
+          "units": "Unit1",
+          "scaled_min": 0,
+          "scaled_max": 65535,
+          "scaled_default": 32767.5
+        },
+        {
+          "spn": 1002,
+          "name": "Signal1_2",
+          "description": "Second signal in Message1",
+          "start_bit": 16,
+          "bit_length": 16,
+          "is_bigEndian": true,
+          "is_twosComplement": false,
+          "factor": 0.1,
+          "offset": -50.0,
+          "units": "Unit2",
+          "scaled_min": -50.0,
+          "scaled_max": 6053.5,
+          "scaled_default": 3001.75
+        }
+      ]
+    },
+    {
+      "pgn": 1001,
+      "name": "Message2",
+      "description": "Message transmitted on MainBus",
+      "priority": 4,
+      "length": 8,
+      "tx_periodicity": 200,
+      "tx_onChange": false,
+      "data": [
+        {
+          "spn": 1003,
+          "name": "Signal2_1",
+          "description": "First signal in Message2",
+          "start_bit": 0,
+          "bit_length": 8,
+          "is_bigEndian": false,
+          "is_twosComplement": true,
+          "factor": 0.5,
+          "offset": 10.0,
+          "units": "Unit3",
+          "scaled_min": 10.0,
+          "scaled_max": 137.5,
+          "scaled_default": 73.75
+        },
+        {
+          "spn": 1004,
+          "name": "Signal2_2",
+          "description": "Second signal in Message2",
+          "start_bit": 8,
+          "bit_length": 8,
+          "is_bigEndian": true,
+          "is_twosComplement": true,
+          "factor": 2.0,
+          "offset": -100.0,
+          "units": "Unit4",
+          "scaled_min": -100.0,
+          "scaled_max": 410.0,
+          "scaled_default": 155.0
+        }
+      ]
+    },
+    {
+      "pgn": 1002,
+      "name": "Message3",
+      "description": "Message transmitted on MainBus",
+      "priority": 2,
+      "length": 8,
+      "tx_periodicity": 150,
+      "tx_onChange": true,
+      "data": [
+        {
+          "spn": 1005,
+          "name": "Signal3_1",
+          "description": "First signal in Message3",
+          "start_bit": 0,
+          "bit_length": 32,
+          "is_bigEndian": true,
+          "is_twosComplement": false,
+          "factor": 1.0,
+          "offset": 0.0,
+          "units": "Unit5",
+          "scaled_min": 0,
+          "scaled_max": 4294967295,
+          "scaled_default": 2147483647.5
+        }
+      ]
+    },
+    {
+      "pgn": 1003,
+      "name": "Message4",
+      "description": "Message transmitted on MainBus",
+      "priority": 1,
+      "length": 8,
+      "tx_periodicity": 250,
+      "tx_onChange": false,
+      "data": [
+        {
+          "spn": 1006,
+          "name": "Signal4_1",
+          "description": "First signal in Message4",
+          "start_bit": 0,
+          "bit_length": 16,
+          "is_bigEndian": false,
+          "is_twosComplement": false,
+          "factor": 0.1,
+          "offset": -20.0,
+          "units": "Unit6",
+          "scaled_min": -20.0,
+          "scaled_max": 6553.5,
+          "scaled_default": 3266.75
+        },
+        {
+          "spn": 1007,
+          "name": "Signal4_2",
+          "description": "Second signal in Message4",
+          "start_bit": 16,
+          "bit_length": 16,
+          "is_bigEndian": true,
+          "is_twosComplement": true,
+          "factor": 0.05,
+          "offset": -50.0,
+          "units": "Unit7",
+          "scaled_min": -50.0,
+          "scaled_max": 3276.75,
+          "scaled_default": 1613.375
+        }
+      ]
+    },
+    {
+      "pgn": 1004,
+      "name": "Message5",
+      "description": "Message transmitted on MainBus",
+      "priority": 5,
+      "length": 8,
+      "tx_periodicity": 300,
+      "tx_onChange": true,
+      "data": [
+        {
+          "spn": 1008,
+          "name": "Signal5_1",
+          "description": "First signal in Message5",
+          "start_bit": 0,
+          "bit_length": 8,
+          "is_bigEndian": false,
+          "is_twosComplement": false,
+          "factor": 2.0,
+          "offset": 0.0,
+          "units": "Unit8",
+          "scaled_min": 0.0,
+          "scaled_max": 510.0,
+          "scaled_default": 255.0
+        },
+        {
+          "spn": 1009,
+          "name": "Signal5_2",
+          "description": "Second signal in Message5",
+          "start_bit": 8,
+          "bit_length": 8,
+          "is_bigEndian": true,
+          "is_twosComplement": false,
+          "factor": 1.5,
+          "offset": 0.0,
+          "units": "Unit9",
+          "scaled_min": 0.0,
+          "scaled_max": 382.5,
+          "scaled_default": 191.25
+        },
+        {
+          "spn": 1010,
+          "name": "Signal5_3",
+          "description": "Third signal in Message5",
+          "start_bit": 16,
+          "bit_length": 16,
+          "is_bigEndian": false,
+          "is_twosComplement": true,
+          "factor": 0.02,
+          "offset": -25.0,
+          "units": "Unit10",
+          "scaled_min": -25.0,
+          "scaled_max": 1310.7,
+          "scaled_default": 642.85
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "name": "Node1",
+      "buses": [
+        {
+          "name": "MainBus",
+          "source_address": 1,
+          "tx": [
+            { "name": "Message1" },
+            { "name": "Message3" }
+          ],
+          "rx": [
+            { "name": "Message2" },
+            { "name": "Message4" }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Node2",
+      "buses": [
+        {
+          "name": "MainBus",
+          "source_address": 2,
+          "tx": [
+            { "name": "Message2" },
+            { "name": "Message4" }
+          ],
+          "rx": [
+            { "name": "Message1" },
+            { "name": "Message5" }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Node3",
+      "buses": [
+        {
+          "name": "MainBus",
+          "source_address": 3,
+          "tx": [
+            { "name": "Message5" }
+          ],
+          "rx": [
+            { "name": "Message2" },
+            { "name": "Message3" }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Node4",
+      "buses": [
+        {
+          "name": "MainBus",
+          "source_address": 4,
+          "tx": [
+            { "name": "Message4" }
+          ],
+          "rx": [
+            { "name": "Message1" },
+            { "name": "Message5" }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Node5",
+      "buses": [
+        {
+          "name": "MainBus",
+          "source_address": 5,
+          "tx": [
+            { "name": "Message2" },
+            { "name": "Message3" }
+          ],
+          "rx": [
+            { "name": "Message4" },
+            { "name": "Message5" }
+          ]
+        }
+      ]
+    }
+  ]
+}

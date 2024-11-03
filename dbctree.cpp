@@ -94,9 +94,9 @@ QTreeWidgetItem* findOrCreateItem(QTreeWidgetItem* parent, const QString& name, 
 
 
 // Function to find a message by name
-const Message* findMessage(const QList<Message>& messages, const QString& name)
+Message* findMessage(QList<Message>& messages, const QString& name)
 {
-    for (const Message& msg : messages) {
+    for (Message& msg : messages) {
         if (msg.name.trimmed().compare(name.trimmed(), Qt::CaseInsensitive) == 0) {
             return &msg;
         }
@@ -122,7 +122,7 @@ void DbcTree::populateTree(const QList<DbcDataModel*>& models)
     messagesCategory->setExpanded(true);
 
     // Iterate through all models
-    for (const DbcDataModel* model : models) {
+    for (DbcDataModel* model : models) {
         QString modelName = model->fileName();
 
         // -------------------------
@@ -135,8 +135,8 @@ void DbcTree::populateTree(const QList<DbcDataModel*>& models)
                                                             ":/icons/network.svg");
 
             // Iterate through Nodes to find those associated with this network
-            for (const Node& node : model->nodes()) {
-                for (const NodeNetworkAssociation& nodeNetwork : node.networks) {
+            for (Node& node : model->nodes()) {
+                for (NodeNetworkAssociation& nodeNetwork : node.networks) {
                     if (nodeNetwork.networkName == network.name) {
                         QString uniqueNodeKey = node.name + "::" + nodeNetwork.networkName;
                         // Create or find the node under this network
@@ -151,9 +151,9 @@ void DbcTree::populateTree(const QList<DbcDataModel*>& models)
                         txMessagesCategory->setData(0, Qt::UserRole, "Collapsible");
                         txMessagesCategory->setExpanded(true);
 
-                        for (const TxRxMessage& txMsg : nodeNetwork.tx) {
+                        for (TxRxMessage& txMsg : nodeNetwork.tx) {
                             // Find the message in the model to get its PGN
-                            const Message* message = findMessage(model->messages(), txMsg.name);
+                            Message* message = findMessage(model->messages(), txMsg.name);
                             QString uniqueMessageKey = message ? QString::number(message->pgn) : txMsg.name;
 
                             QTreeWidgetItem* txMsgItem = new QTreeWidgetItem(txMessagesCategory, QStringList(txMsg.name));
@@ -187,8 +187,10 @@ void DbcTree::populateTree(const QList<DbcDataModel*>& models)
 
                         for (const TxRxMessage& rxMsg : nodeNetwork.rx) {
                             // Find the message in the model to get its PGN
-                            const Message* message = findMessage(model->messages(), rxMsg.name);
+                            Message* message = findMessage(model->messages(), rxMsg.name);
                             QString uniqueMessageKey = message ? QString::number(message->pgn) : rxMsg.name;
+
+
 
                             QTreeWidgetItem* rxMsgItem = new QTreeWidgetItem(rxMessagesCategory, QStringList(rxMsg.name));
                             rxMsgItem->setData(0, Qt::UserRole, "RxMessage");
@@ -230,6 +232,7 @@ void DbcTree::populateTree(const QList<DbcDataModel*>& models)
                                                                      QStringList() << modelName, /*uniqueKey=*/"",
                                                                      ":/icons/network.svg");
 
+
                 // -------------------------
                 // Add <Transmitted Messages>
                 // -------------------------
@@ -239,8 +242,14 @@ void DbcTree::populateTree(const QList<DbcDataModel*>& models)
 
                 for (const TxRxMessage& txMsg : nodeNetwork.tx) {
                     // Find the message in the model to get its PGN
-                    const Message* message = findMessage(model->messages(), txMsg.name);
+                    Message* message = findMessage(model->messages(), txMsg.name);
                     QString uniqueMessageKey = message ? QString::number(message->pgn) : txMsg.name;
+
+                    if (message) {
+                        message->messageTransmitters.append(std::make_pair(node.name, QString::number(nodeNetwork.sourceAddress)));
+                    } else {
+                        qWarning() << "Message not found for Tx:" << txMsg.name;
+                    }
 
                     QTreeWidgetItem* txMsgItem = new QTreeWidgetItem(txMessagesCategory, QStringList(txMsg.name));
                     txMsgItem->setData(0, Qt::UserRole, "TxMessage");
@@ -273,8 +282,15 @@ void DbcTree::populateTree(const QList<DbcDataModel*>& models)
 
                 for (const TxRxMessage& rxMsg : nodeNetwork.rx) {
                     // Find the message in the model to get its PGN
-                    const Message* message = findMessage(model->messages(), rxMsg.name);
+                    Message* message = findMessage(model->messages(), rxMsg.name);
                     QString uniqueMessageKey = message ? QString::number(message->pgn) : rxMsg.name;
+
+
+                    if (message) {
+                        message->messageReceivers.append(std::make_pair(node.name, QString::number(nodeNetwork.sourceAddress)));
+                    } else {
+                        qWarning() << "Message not found for Tx:" << rxMsg.name;
+                    }
 
                     QTreeWidgetItem* rxMsgItem = new QTreeWidgetItem(rxMessagesCategory, QStringList(rxMsg.name));
                     rxMsgItem->setData(0, Qt::UserRole, "RxMessage");
@@ -335,7 +351,7 @@ void DbcTree::populateTree(const QList<DbcDataModel*>& models)
             QMap<QString, QSet<QString>> networkReceivers;
 
             // Find all transmitters and receivers for this message
-            for (const DbcDataModel* modelInner : models) {
+            for (DbcDataModel* modelInner : models) {
                 for (const Node& node : modelInner->nodes()) {
                     for (const NodeNetworkAssociation& nodeNetwork : node.networks) {
                         if (std::any_of(nodeNetwork.tx.begin(), nodeNetwork.tx.end(), [&](const TxRxMessage& tx) { return tx.name == message.name; })) {
@@ -354,12 +370,8 @@ void DbcTree::populateTree(const QList<DbcDataModel*>& models)
 
             QSet<QString> allNetworks(networkTransmittersList.begin(), networkTransmittersList.end());
             allNetworks = allNetworks.unite(QSet<QString>(networkReceiversList.begin(), networkReceiversList.end()));
-            QList<QString> sortedNetworks = allNetworks.values();
-            std::sort(sortedNetworks.begin(), sortedNetworks.end(), [](const QString& a, const QString& b) {
-                return a.toLower() < b.toLower();
-            });
-
-            for (const QString& networkName : sortedNetworks) {
+            QList<QString> networks = allNetworks.values();
+            for (const QString& networkName : networks) {
                 // No uniqueKey for networks under messages
                 QTreeWidgetItem* networkItem = findOrCreateItem(networksUnderMessage, networkName, "Network",
                                                                 QStringList() << modelName, /*uniqueKey=*/"",
@@ -373,9 +385,6 @@ void DbcTree::populateTree(const QList<DbcDataModel*>& models)
                 transmittersCategory->setExpanded(true);
 
                 QList<QString> transmitters = networkTransmitters.value(networkName).values();
-                std::sort(transmitters.begin(), transmitters.end(), [](const QString& a, const QString& b) {
-                    return a.toLower() < b.toLower();
-                });
                 for (const QString& tx : transmitters) {
                     QString uniqueNodeKey = tx + "::" + networkName;
                     findOrCreateItem(transmittersCategory, tx, "Node", QStringList() << modelName, uniqueNodeKey, ":/icons/node.svg");
@@ -389,9 +398,6 @@ void DbcTree::populateTree(const QList<DbcDataModel*>& models)
                 receiversCategory->setExpanded(true);
 
                 QList<QString> receivers = networkReceivers.value(networkName).values();
-                std::sort(receivers.begin(), receivers.end(), [](const QString& a, const QString& b) {
-                    return a.toLower() < b.toLower();
-                });
                 for (const QString& rx : receivers) {
                     QString uniqueNodeKey = rx + "::" + networkName;
                     findOrCreateItem(receiversCategory, rx, "Node", QStringList() << modelName, uniqueNodeKey, ":/icons/node.svg");

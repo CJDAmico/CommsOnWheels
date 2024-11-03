@@ -115,6 +115,7 @@ private:
     // Widgets for node Tab
     QFormLayout* nodeFormLayout;
     QLineEdit* nodeNameLineEdit;
+    QTableWidget *nodeAddressTable;
 
     // Widgets for Signal Tab
     QFormLayout *signalFormLayout;

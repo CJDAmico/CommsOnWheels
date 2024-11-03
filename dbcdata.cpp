@@ -184,7 +184,7 @@ void DbcDataModel::parseJson(const QJsonObject& jsonObject) {
         }
 
         // Sort message.messageSignals alphabetically by name
-        std::sort(message.messageSignals.begin(), message.messageSignals.end(), [](const Signal& a, const Signal& b) {
+        std::sort(message.messageSignals.begin(), message.messageSignals.end(), [](Signal& a, Signal& b) {
             return a.name.toLower() < b.name.toLower();
         });
 
@@ -192,7 +192,7 @@ void DbcDataModel::parseJson(const QJsonObject& jsonObject) {
     }
 
     // Sort m_messages alphabetically by name
-    std::sort(m_messages.begin(), m_messages.end(), [](const Message& a, const Message& b) {
+    std::sort(m_messages.begin(), m_messages.end(), [](Message& a, Message& b) {
         return a.name.toLower() < b.name.toLower();
     });
 
@@ -221,7 +221,7 @@ void DbcDataModel::parseJson(const QJsonObject& jsonObject) {
             }
 
             // Sort nodeNetwork.tx alphabetically by name
-            std::sort(nodeNetwork.tx.begin(), nodeNetwork.tx.end(), [](const TxRxMessage& a, const TxRxMessage& b) {
+            std::sort(nodeNetwork.tx.begin(), nodeNetwork.tx.end(), [](TxRxMessage& a, TxRxMessage& b) {
                 return a.name.toLower() < b.name.toLower();
             });
 
@@ -235,7 +235,7 @@ void DbcDataModel::parseJson(const QJsonObject& jsonObject) {
             }
 
             // Sort nodeNetwork.rx alphabetically by name
-            std::sort(nodeNetwork.rx.begin(), nodeNetwork.rx.end(), [](const TxRxMessage& a, const TxRxMessage& b) {
+            std::sort(nodeNetwork.rx.begin(), nodeNetwork.rx.end(), [](TxRxMessage& a, TxRxMessage& b) {
                 return a.name.toLower() < b.name.toLower();
             });
 
@@ -243,7 +243,7 @@ void DbcDataModel::parseJson(const QJsonObject& jsonObject) {
         }
 
         // Sort node.networks alphabetically by networkName
-        std::sort(node.networks.begin(), node.networks.end(), [](const NodeNetworkAssociation& a, const NodeNetworkAssociation& b) {
+        std::sort(node.networks.begin(), node.networks.end(), [](NodeNetworkAssociation& a, NodeNetworkAssociation& b) {
             return a.networkName.toLower() < b.networkName.toLower();
         });
 
@@ -251,21 +251,21 @@ void DbcDataModel::parseJson(const QJsonObject& jsonObject) {
     }
 
     // Sort m_nodes alphabetically by name
-    std::sort(m_nodes.begin(), m_nodes.end(), [](const Node& a, const Node& b) {
+    std::sort(m_nodes.begin(), m_nodes.end(), [](Node& a, Node& b) {
         return a.name.toLower() < b.name.toLower();
     });
 }
 
 
 
-QList<Network> DbcDataModel::networks() const {
+QList<Network>& DbcDataModel::networks() {
     return m_networks;
 }
 
-QList<Message> DbcDataModel::messages() const {
+QList<Message>& DbcDataModel::messages() {
     return m_messages;
 }
 
-QList<Node> DbcDataModel::nodes() const {
+QList<Node>& DbcDataModel::nodes()  {
     return m_nodes;
 }
