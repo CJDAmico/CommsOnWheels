@@ -423,9 +423,10 @@ void MainWindow::handleMessageItem(QTreeWidgetItem* item, const QString& name, c
     dataPageCheckBox->setChecked(false);
 
     // Update attributes table
-    attributesTable->setRowCount(0);
-    addAttributeRow(attributesTable, {"TxPeriodicity", "Integer", QString::number(message->txPeriodicity)});
-    addAttributeRow(attributesTable, {"TxOnChange", "Bool", message->txOnChange ? "True" : "False"});
+    messageAttributesTable->setRowCount(0);
+    for(const Attribute& attribute : message->messageAttributes) {
+        addAttributeRow(messageAttributesTable, { attribute.name, attribute.type, attribute.value });
+    }
 
     // Update signals list
     signalsList->clear();
@@ -546,6 +547,12 @@ void MainWindow::handleSignalItem(QTreeWidgetItem* item, const QString& name, co
     offsetSpinBox->setValue(signal->offset);
     unitsLineEdit->setText(signal->units);
 
+    // Update attributes table
+    signalAttributesTable->setRowCount(0);
+    for(const Attribute& attribute : signal->signalAttributes) {
+        addAttributeRow(signalAttributesTable, { attribute.name, attribute.type, attribute.value });
+    }
+
     // Update enumerations table
     enumerationsTable->setRowCount(0);
     for (const Enumeration& enumVal : signal->enumerations) {
@@ -618,6 +625,12 @@ void MainWindow::handleNetworkItem(QTreeWidgetItem* item, const QString& name, c
     networkNameLineEdit->setText(network->name);
     baudRateLineEdit->setText(network->baud);
 
+    // Update attributes table
+    networkAttributesTable->setRowCount(0);
+    for(const Attribute& attribute : network->networkAttributes) {
+        addAttributeRow(networkAttributesTable, { attribute.name, attribute.type, attribute.value });
+    }
+
     // Show the Network tab
     if (rightPanel->indexOf(networkTab) == -1) {
         rightPanel->addTab(networkTab, "Network");
@@ -678,6 +691,12 @@ void MainWindow::handleNodeItem(QTreeWidgetItem* item, const QString& name, cons
         nodeAddressTable->setItem(row, 1, sourceAddressItem);
     }
 
+    // Update attributes table
+    nodeAttributesTable->setRowCount(0);
+    for(const Attribute& attribute : node->nodeAttributes) {
+        addAttributeRow(nodeAttributesTable, { attribute.name, attribute.type, attribute.value });
+    }
+
     // Show the node tab
     if (rightPanel->indexOf(nodeTab) == -1) {
         rightPanel->addTab(nodeTab, "Node");
@@ -693,6 +712,7 @@ void MainWindow::setupRightPanel()
     // Initialize widgets
     rightPanel = new QTabWidget;
 
+    //--------Messages--------------------
     // Definition
     definitionTab = new QWidget;
     definitionFormLayout = new QFormLayout;
@@ -703,7 +723,7 @@ void MainWindow::setupRightPanel()
     lengthSpinBox = new QSpinBox;
     extendedDataPageCheckBox = new QCheckBox;
     dataPageCheckBox = new QCheckBox;
-    attributesTable = new QTableWidget;
+    messageAttributesTable = new QTableWidget;
     signalsList = new QListWidget;
 
     // Transmitters
@@ -721,19 +741,22 @@ void MainWindow::setupRightPanel()
     bitGrid = new QTableWidget;
     layoutFormLayout = new QFormLayout;
 
-    // Network
-    networkTab = new QWidget;
+    //--------Network--------------------
+        networkTab = new QWidget;
     networkFormLayout = new QFormLayout;
     networkNameLineEdit = new QLineEdit;
     baudRateLineEdit = new QLineEdit;
+    networkAttributesTable = new QTableWidget;
 
-    // Node
+    //--------Node--------------------
     nodeTab = new QWidget;
     nodeFormLayout = new QFormLayout;
     nodeNameLineEdit = new QLineEdit;
     nodeAddressTable = new QTableWidget;
+    nodeAttributesTable = new QTableWidget;
 
-    // Signal
+
+    //--------Signal--------------------
     signalTab = new QWidget;
     signalFormLayout = new QFormLayout;
     spnSpinBox = new QSpinBox;
@@ -747,6 +770,7 @@ void MainWindow::setupRightPanel()
     offsetSpinBox = new QDoubleSpinBox;
     unitsLineEdit = new QLineEdit;
     enumerationsTable = new QTableWidget;
+    signalAttributesTable = new QTableWidget;
 
 
     // Set up the Definition Form Layout
@@ -757,11 +781,11 @@ void MainWindow::setupRightPanel()
     definitionFormLayout->addRow("Length:", lengthSpinBox);
     definitionFormLayout->addRow("Extended Data Page:", extendedDataPageCheckBox);
     definitionFormLayout->addRow("Data Page:", dataPageCheckBox);
-    definitionFormLayout->addRow(new QLabel("Additional Attributes:"));
-    attributesTable->setColumnCount(3);
-    attributesTable->setHorizontalHeaderLabels({"Name", "Type", "Value"});
-    attributesTable->horizontalHeader()->setStretchLastSection(true);
-    definitionFormLayout->addRow(attributesTable);
+    definitionFormLayout->addRow(new QLabel("Message Attributes:"));
+    messageAttributesTable->setColumnCount(3);
+    messageAttributesTable->setHorizontalHeaderLabels({"Name", "Type", "Value"});
+    messageAttributesTable->horizontalHeader()->setStretchLastSection(true);
+    definitionFormLayout->addRow(messageAttributesTable);
     definitionFormLayout->addRow(new QLabel("Signals:"));
     definitionFormLayout->addRow(signalsList);
     definitionTab->setLayout(definitionFormLayout);
@@ -787,6 +811,11 @@ void MainWindow::setupRightPanel()
     // Network Tab
     networkFormLayout->addRow("Network Name:", networkNameLineEdit);
     networkFormLayout->addRow("Baud Rate:", baudRateLineEdit);
+    networkFormLayout->addRow(new QLabel("Network Attributes:"));
+    networkAttributesTable->setColumnCount(3);
+    networkAttributesTable->setHorizontalHeaderLabels({"Name", "Type", "Value"});
+    networkAttributesTable->horizontalHeader()->setStretchLastSection(true);
+    networkFormLayout->addRow(networkAttributesTable);
     networkTab->setLayout(networkFormLayout);
 
     // Node Tab
@@ -795,6 +824,11 @@ void MainWindow::setupRightPanel()
     nodeFormLayout->addRow("Node Name:", nodeNameLineEdit);
     nodeFormLayout->addRow(new QLabel("Node Address:"));
     nodeFormLayout->addRow(nodeAddressTable);
+    nodeFormLayout->addRow(new QLabel("Node Attributes:"));
+    nodeAttributesTable->setColumnCount(3);
+    nodeAttributesTable->setHorizontalHeaderLabels({"Name", "Type", "Value"});
+    nodeAttributesTable->horizontalHeader()->setStretchLastSection(true);
+    nodeFormLayout->addRow(nodeAttributesTable);
     nodeTab->setLayout(nodeFormLayout);
 
     // Signal Tab
@@ -808,6 +842,11 @@ void MainWindow::setupRightPanel()
     signalFormLayout->addRow("Factor:", factorSpinBox);
     signalFormLayout->addRow("Offset:", offsetSpinBox);
     signalFormLayout->addRow("Units:", unitsLineEdit);
+    signalFormLayout->addRow(new QLabel("Signal Attributes:"));
+    signalAttributesTable->setColumnCount(3);
+    signalAttributesTable->setHorizontalHeaderLabels({"Name", "Type", "Value"});
+    signalAttributesTable->horizontalHeader()->setStretchLastSection(true);
+    signalFormLayout->addRow(signalAttributesTable);
     signalFormLayout->addRow(new QLabel("Enumerations:"));
     enumerationsTable->setColumnCount(3);
     enumerationsTable->setHorizontalHeaderLabels({"Name", "Value", "Description"});
@@ -851,7 +890,10 @@ void MainWindow::clearRightPanel()
     lengthSpinBox->setValue(0);
     extendedDataPageCheckBox->setChecked(false);
     dataPageCheckBox->setChecked(false);
-    attributesTable->setRowCount(0);
+    messageAttributesTable->setRowCount(0);
+    networkAttributesTable->setRowCount(0);
+    nodeAttributesTable->setRowCount(0);
+    signalAttributesTable->setRowCount(0);
     transmittersTable->setRowCount(0);
     receiversTable->setRowCount(0);
     bitGrid->setRowCount(0);

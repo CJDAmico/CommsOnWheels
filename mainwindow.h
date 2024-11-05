@@ -74,7 +74,7 @@ private:
     QSpinBox *lengthSpinBox;
     QCheckBox *extendedDataPageCheckBox;
     QCheckBox *dataPageCheckBox;
-    QTableWidget *attributesTable;
+    QTableWidget *messageAttributesTable;
     QListWidget *signalsList;
 
     // Widgets for transmitters and receivers tabs
@@ -111,11 +111,13 @@ private:
     QFormLayout *networkFormLayout;
     QLineEdit *networkNameLineEdit;
     QLineEdit *baudRateLineEdit;
+    QTableWidget *networkAttributesTable;
 
     // Widgets for node Tab
     QFormLayout* nodeFormLayout;
     QLineEdit* nodeNameLineEdit;
     QTableWidget *nodeAddressTable;
+    QTableWidget *nodeAttributesTable;
 
     // Widgets for Signal Tab
     QFormLayout *signalFormLayout;
@@ -130,6 +132,7 @@ private:
     QDoubleSpinBox *offsetSpinBox;
     QLineEdit *unitsLineEdit;
     QTableWidget *enumerationsTable;
+    QTableWidget *signalAttributesTable;
 
 
 };
