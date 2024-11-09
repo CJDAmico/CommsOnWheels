@@ -11,6 +11,7 @@
 #include <QListWidget>
 #include <QSplitter>
 #include <QLineEdit>
+#include <QComboBox>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -48,7 +49,7 @@ private:
     void updateDbcTree();
     void setupRightPanel();
     void clearRightPanel();
-    void displayBitLayout(const Message &message);
+    void displayBitLayout(Message &message, int selectedMultiplexor);
 
     // Left and Right Tab Splitter
     QSplitter *splitter;
@@ -86,6 +87,9 @@ private:
     // Widgets for layout tab
     QFormLayout *layoutFormLayout;
     QTableWidget *bitGrid;
+    QComboBox *multiplexorComboBox;
+    Message *currentMessage;
+
     // 64 possible colors for signals in the layout tab, circular array accessed by using colors index
     int colorsIndex;
     const std::vector<QColor> signalColors = {

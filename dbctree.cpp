@@ -123,6 +123,11 @@ void DbcTree::populateTree(const QList<DbcDataModel*>& models)
 
     // Iterate through all models
     for (DbcDataModel* model : models) {
+        if (!model) {
+            qWarning() << "populateTree: Encountered a null DbcDataModel pointer.";
+            continue;
+        }
+
         QString modelName = model->fileName();
 
         // -------------------------

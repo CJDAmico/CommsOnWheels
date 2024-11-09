@@ -57,8 +57,10 @@ class Signal {
         int bitLength;           // Required
         bool isBigEndian;        // Optional, defaults to false
         bool isTwosComplement;   // Optional, defaults to false
+        bool isMultiplexor;      // Optional, defaults to false
         double factor;           // Optional, defaults to 1.0
         double offset;           // Optional, defaults to 0.0
+        int multiplexValue;      // Optional, defaults to -1
         QString units;           // Optional, defaults to empty string
         QVariant scaledMin;      // Optional, defaults to null
         QVariant scaledMax;      // Optional, defaults to null
@@ -75,6 +77,7 @@ class Message {
         int priority;            // Required
         int length;              // Required
         int txPeriodicity;       // Optional, defaults to 0
+        int multiplexValue;      // Optional, default to -1
         bool txOnChange;         // Optional, defaults to false
         QList<Signal> messageSignals;      // Optional, defaults to empty list
         QList<Network> messageNetworks;      // Optional, defaults to empty list

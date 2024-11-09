@@ -390,8 +390,8 @@ void MainWindow::handleMessageItem(QTreeWidgetItem* item, const QString& name, c
     // Retrieve the uniqueKey (which is the message's PGN)
     QString uniqueKey = item->data(0, Qt::UserRole + 2).toString();
 
-    const Message* message = nullptr;
-    for (const Message& msg : model->messages()) {
+    Message* message = nullptr;
+    for (Message& msg : model->messages()) {
         if (QString::number(msg.pgn) == uniqueKey) {
             message = &msg;
             break;
@@ -461,8 +461,40 @@ void MainWindow::handleMessageItem(QTreeWidgetItem* item, const QString& name, c
         rightPanel->addTab(receiversTab, "Receivers");
     }
 
-    // Update layout table
-    displayBitLayout(*message);
+
+
+    // Populate the combo box with multiplexor values
+    multiplexorComboBox->clear();
+    multiplexorComboBox->addItem("No Multiplexor", -1);
+    for (Signal& signal : message->messageSignals) {
+        if(signal.isMultiplexor) {
+            qDebug() << "enumerations found";
+            for(Enumeration& enumeration : signal.enumerations) {
+                QString hexValue = QString("0x") + QString::number(enumeration.value, 16).toUpper();
+                multiplexorComboBox->addItem(signal.name + ": " + hexValue + " (" + enumeration.name + ")", enumeration.value);
+            }
+        }
+    }
+
+    // Disconnect any existing connections to prevent multiple triggers
+    disconnect(multiplexorComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
+               this, nullptr);
+
+    // Assign selected message to context wide variable
+    currentMessage = message;
+
+    // Connect the combo box signal to update multiplexorValue
+    connect(multiplexorComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+            [this](int index) {
+                if (!currentMessage) return;
+
+                int selectedMultiplexor = multiplexorComboBox->currentData().toInt();
+                currentMessage->multiplexValue = selectedMultiplexor;
+                displayBitLayout(*currentMessage, selectedMultiplexor); // Update the bit layout
+            });
+
+    displayBitLayout(*message, message->multiplexValue);
+
     // Show layout tab
     if (rightPanel->indexOf(layoutTab) == -1) {
         rightPanel->addTab(layoutTab, "Layout");
@@ -740,6 +772,8 @@ void MainWindow::setupRightPanel()
     layoutTab = new QWidget;
     bitGrid = new QTableWidget;
     layoutFormLayout = new QFormLayout;
+    // Multiplexor selection dropdown
+    multiplexorComboBox = new QComboBox;
 
     //--------Network--------------------
         networkTab = new QWidget;
@@ -805,6 +839,7 @@ void MainWindow::setupRightPanel()
     receiversTab->setLayout(receiversFormLayout);
 
     // Set up Layout form
+    layoutFormLayout->addRow("Multiplexor:", multiplexorComboBox);
     layoutFormLayout->addRow(bitGrid);
     layoutTab->setLayout(layoutFormLayout);
 
@@ -898,6 +933,8 @@ void MainWindow::clearRightPanel()
     receiversTable->setRowCount(0);
     bitGrid->setRowCount(0);
     bitGrid->setColumnCount(0);
+    currentMessage = nullptr;
+    disconnect(multiplexorComboBox, nullptr, this, nullptr);
     signalsList->clear();
 
     // Node Tab
@@ -923,7 +960,7 @@ void MainWindow::clearRightPanel()
 }
 
 
-void MainWindow::displayBitLayout(const Message& message) {
+void MainWindow::displayBitLayout(Message& message , int selectedMultiplexor = -1) {
     int messageLength = message.length * 8;  // Convert message length from bytes to bits
 
     // Clear existing grid content
@@ -945,8 +982,12 @@ void MainWindow::displayBitLayout(const Message& message) {
     colorsIndex = 0;
     // Populate the grid based on each signal's bit allocation
     for (const Signal& signal : message.messageSignals) {
-        int startBit = signal.startBit;
+        // Skip signals if they're multiplexed and not matching the selected multiplexor value
+        if (message.multiplexValue != -1 && signal.multiplexValue != message.multiplexValue) {
+            continue;
+        }
 
+        int startBit = signal.startBit;
         int currentRow = startBit / 8;
         int currentCol = startBit % 8;
         int bitsRemaining = signal.bitLength;

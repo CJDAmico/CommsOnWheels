@@ -142,6 +142,7 @@ void DbcDataModel::parseJson(const QJsonObject& jsonObject) {
         message.length = messageObject.value("length").toInt();
         message.txPeriodicity = messageObject.value("tx_periodicity").toInt(0);
         message.txOnChange = messageObject.value("tx_onChange").toBool(false);
+        message.multiplexValue = -1; // Always defaults to -1
 
         // Parse signals
         QJsonArray dataArray = messageObject.value("data").toArray();
@@ -158,6 +159,8 @@ void DbcDataModel::parseJson(const QJsonObject& jsonObject) {
             signal.factor = signalObject.value("factor").toDouble(1.0);
             signal.offset = signalObject.value("offset").toDouble(0.0);
             signal.units = signalObject.value("units").toString();
+            signal.multiplexValue = signalObject.value("multiplexValue").toInt(-1);
+            signal.isMultiplexor = signalObject.value("is_multiplexor").toBool(false);
 
             // Handle scaled_min, scaled_max, scaled_default
             signal.scaledMin = signalObject.value("scaled_min").toVariant();

@@ -1,0 +1,196 @@
+{
+  "buses": [
+    {
+      "name": "CANBus1",
+      "baud": "250k"
+    },
+    {
+      "name": "CANBus2",
+      "baud": "500k"
+    }
+  ],
+  "messages": [
+    {
+      "pgn": 1001,
+      "name": "EngineStatus",
+      "description": "Status information from the engine",
+      "priority": 3,
+      "length": 8,
+      "tx_periodicity": 100,
+      "tx_onChange": true,
+      "data": [
+        {
+          "spn": 1,
+          "name": "EngineOn",
+          "description": "Indicates if the engine is on",
+          "start_bit": 0,
+          "bit_length": 1,
+          "is_bigEndian": false,
+          "is_twosComplement": false,
+          "factor": 1.0,
+          "offset": 0.0,
+          "units": "",
+          "multiplexValue": -1,
+          "enumerations": []
+        },
+        {
+          "spn": 2,
+          "name": "EngineMode",
+          "description": "Current mode of the engine",
+          "start_bit": 1,
+          "bit_length": 3,
+          "is_bigEndian": false,
+          "is_twosComplement": false,
+          "factor": 1.0,
+          "offset": 0.0,
+          "units": "",
+          "multiplexValue": -1,
+          "enumerations": [
+            {
+              "name": "Off",
+              "description": "Engine is off",
+              "value": 0
+            },
+            {
+              "name": "Idle",
+              "description": "Engine is idling",
+              "value": 1
+            },
+            {
+              "name": "Running",
+              "description": "Engine is running",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "spn": 5,
+          "name": "EngineDataType",
+          "description": "Multiplexor signal indicating the type of engine data",
+          "start_bit": 4,
+          "bit_length": 4,
+          "is_bigEndian": false,
+          "is_twosComplement": false,
+          "factor": 1.0,
+          "offset": 0.0,
+          "units": "",
+          "is_multiplexor": true,
+          "enumerations": [
+            {
+              "name": "TemperatureData",
+              "description": "Temperature data is present",
+              "value": 1
+            },
+            {
+              "name": "PressureData",
+              "description": "Pressure data is present",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "spn": 3,
+          "name": "Temperature",
+          "description": "Engine temperature",
+          "start_bit": 8,
+          "bit_length": 16,
+          "is_bigEndian": true,
+          "is_twosComplement": false,
+          "factor": 0.1,
+          "offset": -40.0,
+          "units": "C",
+          "multiplexValue": 1,
+          "enumerations": []
+        },
+        {
+          "spn": 4,
+          "name": "Pressure",
+          "description": "Engine pressure",
+          "start_bit": 8,
+          "bit_length": 16,
+          "is_bigEndian": true,
+          "is_twosComplement": false,
+          "factor": 0.1,
+          "offset": 0.0,
+          "units": "kPa",
+          "multiplexValue": 2,
+          "enumerations": []
+        }
+      ]
+    },
+    {
+      "pgn": 2002,
+      "name": "VehicleSpeed",
+      "description": "Speed information from the vehicle",
+      "priority": 2,
+      "length": 8,
+      "tx_periodicity": 50,
+      "tx_onChange": false,
+      "data": [
+        {
+          "spn": 10,
+          "name": "Speed",
+          "description": "Current speed of the vehicle",
+          "start_bit": 0,
+          "bit_length": 16,
+          "is_bigEndian": true,
+          "is_twosComplement": false,
+          "factor": 0.01,
+          "offset": 0.0,
+          "units": "km/h",
+          "multiplexValue": -1,
+          "enumerations": []
+        },
+        {
+          "spn": 11,
+          "name": "WheelSpeedFL",
+          "description": "Front Left Wheel Speed",
+          "start_bit": 16,
+          "bit_length": 16,
+          "is_bigEndian": true,
+          "is_twosComplement": false,
+          "factor": 0.1,
+          "offset": 0.0,
+          "units": "km/h",
+          "multiplexValue": -1,
+          "enumerations": []
+        },
+        {
+          "spn": 12,
+          "name": "WheelSpeedFR",
+          "description": "Front Right Wheel Speed",
+          "start_bit": 32,
+          "bit_length": 16,
+          "is_bigEndian": true,
+          "is_twosComplement": false,
+          "factor": 0.1,
+          "offset": 0.0,
+          "units": "km/h",
+          "multiplexValue": -1,
+          "enumerations": []
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "name": "ECU1",
+      "buses": [
+        {
+          "name": "CANBus1",
+          "source_address": 1,
+          "tx": [
+            {
+              "name": "EngineStatus"
+            }
+          ],
+          "rx": [
+            {
+              "name": "VehicleSpeed"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
