@@ -4,6 +4,8 @@
 #include <QJsonValue>
 #include <QDebug>
 #include <qfileinfo.h>
+#include <QTextStream>
+#include <QRegularExpression>
 
 DbcDataModel::DbcDataModel() {
     // Constructor
@@ -21,69 +23,75 @@ QString DbcDataModel::fileName() const
 
 
 bool DbcDataModel::importDBC(const QString& filePath) {
-    // TODO: Implement parsing DBC and filling m_Networkes, m_messages, and m_nodes with a list of their corresponding classes (Look into parseJSON for example)
+    // TODO: Implement parsing a DBC file
+
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         qWarning() << "Couldn't open DBC file:" << filePath;
         return false;
     }
 
-    // Clear existing data
-    m_networks.clear();
-    m_messages.clear();
-    m_nodes.clear();
+    QTextStream in(&file);
+    QString line;
+    QRegularExpression reNode("^BU_:\\s*(.*)");
+    QRegularExpression reMessage("^BO_\\s+(\\d+)\\s+(\\w+):\\s+(\\d+)\\s+(\\w+)");
+    QRegularExpression reSignal("^\\s+SG_\\s+(\\w+)\\s*:\\s*(\\d+)\\|(\\d+)@(\\d+)([+-])\\s+\\(([^,]+),([^\\)]+)\\)\\s+\\[([^\\|]+)\\|([^\\]]+)\\]\\s+\"([^\"]*)\"\\s+(\\w+)");
 
-    // Set network name as DBC file name
+    // Set  network name to file name
     Network network;
-    network.name = QFileInfo(filePath).baseName();
-    network.baud = "250k";  // Default baud rate, extract from the file if specified
+    network.name = QFileInfo(filePath).fileName();
     m_networks.append(network);
 
-    QTextStream in(&file);
-
-    QRegularExpression messageRegex(R"(^BO_ (\d+) (\w+)\s*:\s*(\d+)\s+(\w+))");
-    QRegularExpression signalRegex(R"(^ SG_ (\w+) : (\d+)\|(\d+)@([01])(\+|-) \(([^,]+),([^,]+)\) \[([^\]]+)\] \"([^\"]*)\")");
-
     while (!in.atEnd()) {
-        QString line = in.readLine().trimmed();
+        line = in.readLine();
 
-        static QRegularExpressionMatch messageMatch = messageRegex.match(line);
-        if (messageMatch.hasMatch()) {
-            Message message;
-            message.pgn = messageMatch.captured(1).toULongLong();
-            message.name = messageMatch.captured(2);
-            message.length = messageMatch.captured(3).toInt();
-            message.description = "Parsed message description"; // Placeholder or extracted if available
-            message.priority = 6;  // Placeholder, adjust based on your requirements
-            m_messages.append(message);
-            continue; // Proceed to the next line
+        // Parse nodes
+        QRegularExpressionMatch match = reNode.match(line);
+        if (match.hasMatch()) {
+            QStringList nodes = match.captured(1).split(' ', Qt::SkipEmptyParts);
+            for (const QString& nodeName : nodes) {
+                Node node;
+                node.name = nodeName.trimmed();
+                m_nodes.append(node);
+            }
+            continue;
         }
 
-        QRegularExpressionMatch signalMatch = signalRegex.match(line);
-        if (signalMatch.hasMatch()) {
+        // Parse messages
+        match = reMessage.match(line);
+        if (match.hasMatch()) {
+            Message message;
+            message.pgn = match.captured(1).toULongLong();
+            message.name = match.captured(2).trimmed();
+            message.length = match.captured(3).toInt();
+            QString transmitter = match.captured(4).trimmed();
+            message.messageTransmitters.append({transmitter, QString::number(message.pgn)});
+            m_messages.append(message);
+            continue;
+        }
+
+        // Parse signals
+        match = reSignal.match(line);
+        if (match.hasMatch()) {
             Signal signal;
-            signal.name = signalMatch.captured(1);
-            signal.startBit = signalMatch.captured(2).toInt();
-            signal.bitLength = signalMatch.captured(3).toInt();
-            signal.isBigEndian = signalMatch.captured(4) == "1";
-            signal.isTwosComplement = signalMatch.captured(5) == "-";
-            signal.factor = signalMatch.captured(6).toDouble();
-            signal.offset = signalMatch.captured(7).toDouble();
-            signal.units = signalMatch.captured(9);
+            signal.name = match.captured(1).trimmed();
+            signal.startBit = match.captured(2).toInt();
+            signal.bitLength = match.captured(3).toInt();
+            signal.isBigEndian = (match.captured(4).toInt() == 1);
+            signal.isTwosComplement = (match.captured(5) == "-");
+            signal.factor = match.captured(6).toDouble();
+            signal.offset = match.captured(7).toDouble();
+            signal.scaledMin = match.captured(8).toDouble();
+            signal.scaledMax = match.captured(9).toDouble();
+            signal.units = match.captured(10).trimmed();
+            QString receiver = match.captured(11).trimmed();
             m_messages.last().messageSignals.append(signal);
+            m_nodes.append({receiver, {}, {}});
+            continue;
         }
     }
 
     file.close();
-
-    // Sort all lists alphabetically by name
-    std::sort(m_networks.begin(), m_networks.end(), [](const Network& a, const Network& b) {
-        return a.name.toLower() < b.name.toLower();
-    });
-    std::sort(m_messages.begin(), m_messages.end(), [](const Message& a, const Message& b) {
-        return a.name.toLower() < b.name.toLower();
-    });
-
     return true;
 }
 
