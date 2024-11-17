@@ -57,7 +57,7 @@ class Signal {
         int bitLength;           // Required
         bool isBigEndian;        // Optional, defaults to false
         bool isTwosComplement;   // Optional, defaults to false
-        bool isMultiplexor;      // Optional, defaults to false
+        bool isMultiplexer;      // Optional, defaults to false
         double factor;           // Optional, defaults to 1.0
         double offset;           // Optional, defaults to 0.0
         int multiplexValue;      // Optional, defaults to -1

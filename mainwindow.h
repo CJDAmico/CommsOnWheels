@@ -49,7 +49,7 @@ private:
     void updateDbcTree();
     void setupRightPanel();
     void clearRightPanel();
-    void displayBitLayout(Message &message, int selectedMultiplexor);
+    void displayBitLayout(Message &message, int selectedMultiplexer);
 
     // Left and Right Tab Splitter
     QSplitter *splitter;
@@ -87,7 +87,7 @@ private:
     // Widgets for layout tab
     QFormLayout *layoutFormLayout;
     QTableWidget *bitGrid;
-    QComboBox *multiplexorComboBox;
+    QComboBox *multiplexerComboBox;
     Message *currentMessage;
 
     // 64 possible colors for signals in the layout tab, circular array accessed by using colors index

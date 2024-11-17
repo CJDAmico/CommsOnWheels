@@ -463,34 +463,34 @@ void MainWindow::handleMessageItem(QTreeWidgetItem* item, const QString& name, c
 
 
 
-    // Populate the combo box with multiplexor values
-    multiplexorComboBox->clear();
-    multiplexorComboBox->addItem("No Multiplexor", -1);
+    // Populate the combo box with multiplexer values
+    multiplexerComboBox->clear();
+    multiplexerComboBox->addItem("No Multiplexer", -1);
     for (Signal& signal : message->messageSignals) {
-        if(signal.isMultiplexor) {
+        if(signal.isMultiplexer) {
             qDebug() << "enumerations found";
             for(Enumeration& enumeration : signal.enumerations) {
                 QString hexValue = QString("0x") + QString::number(enumeration.value, 16).toUpper();
-                multiplexorComboBox->addItem(signal.name + ": " + hexValue + " (" + enumeration.name + ")", enumeration.value);
+                multiplexerComboBox->addItem(signal.name + ": " + hexValue + " (" + enumeration.name + ")", enumeration.value);
             }
         }
     }
 
     // Disconnect any existing connections to prevent multiple triggers
-    disconnect(multiplexorComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
+    disconnect(multiplexerComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
                this, nullptr);
 
     // Assign selected message to context wide variable
     currentMessage = message;
 
-    // Connect the combo box signal to update multiplexorValue
-    connect(multiplexorComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+    // Connect the combo box signal to update multiplexerValue
+    connect(multiplexerComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
             [this](int index) {
                 if (!currentMessage) return;
 
-                int selectedMultiplexor = multiplexorComboBox->currentData().toInt();
-                currentMessage->multiplexValue = selectedMultiplexor;
-                displayBitLayout(*currentMessage, selectedMultiplexor); // Update the bit layout
+                int selectedMultiplexer = multiplexerComboBox->currentData().toInt();
+                currentMessage->multiplexValue = selectedMultiplexer;
+                displayBitLayout(*currentMessage, selectedMultiplexer); // Update the bit layout
             });
 
     displayBitLayout(*message, message->multiplexValue);
@@ -772,8 +772,8 @@ void MainWindow::setupRightPanel()
     layoutTab = new QWidget;
     bitGrid = new QTableWidget;
     layoutFormLayout = new QFormLayout;
-    // Multiplexor selection dropdown
-    multiplexorComboBox = new QComboBox;
+    // Multiplexer selection dropdown
+    multiplexerComboBox = new QComboBox;
 
     //--------Network--------------------
         networkTab = new QWidget;
@@ -839,7 +839,7 @@ void MainWindow::setupRightPanel()
     receiversTab->setLayout(receiversFormLayout);
 
     // Set up Layout form
-    layoutFormLayout->addRow("Multiplexor:", multiplexorComboBox);
+    layoutFormLayout->addRow("Multiplexer:", multiplexerComboBox);
     layoutFormLayout->addRow(bitGrid);
     layoutTab->setLayout(layoutFormLayout);
 
@@ -855,7 +855,7 @@ void MainWindow::setupRightPanel()
 
     // Node Tab
     nodeAddressTable->setColumnCount(2);
-    nodeAddressTable->setHorizontalHeaderLabels({"Network Name", "Source Address"});
+    nodeAddressTable->setHorizontalHeaderLabels({"Network Name", "Network Address"});
     nodeFormLayout->addRow("Node Name:", nodeNameLineEdit);
     nodeFormLayout->addRow(new QLabel("Node Address:"));
     nodeFormLayout->addRow(nodeAddressTable);
@@ -934,7 +934,7 @@ void MainWindow::clearRightPanel()
     bitGrid->setRowCount(0);
     bitGrid->setColumnCount(0);
     currentMessage = nullptr;
-    disconnect(multiplexorComboBox, nullptr, this, nullptr);
+    disconnect(multiplexerComboBox, nullptr, this, nullptr);
     signalsList->clear();
 
     // Node Tab
@@ -960,7 +960,7 @@ void MainWindow::clearRightPanel()
 }
 
 
-void MainWindow::displayBitLayout(Message& message , int selectedMultiplexor = -1) {
+void MainWindow::displayBitLayout(Message& message , int selectedMultiplexer = -1) {
     int messageLength = message.length * 8;  // Convert message length from bytes to bits
 
     // Clear existing grid content
@@ -982,7 +982,7 @@ void MainWindow::displayBitLayout(Message& message , int selectedMultiplexor = -
     colorsIndex = 0;
     // Populate the grid based on each signal's bit allocation
     for (const Signal& signal : message.messageSignals) {
-        // Skip signals if they're multiplexed and not matching the selected multiplexor value
+        // Skip signals if they're multiplexed and not matching the selected multiplexer value
         if (message.multiplexValue != -1 && signal.multiplexValue != message.multiplexValue) {
             continue;
         }

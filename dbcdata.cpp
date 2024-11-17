@@ -23,7 +23,6 @@ QString DbcDataModel::fileName() const
 
 
 bool DbcDataModel::importDBC(const QString& filePath) {
-    // TODO: Implement parsing a DBC file
 
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -39,7 +38,14 @@ bool DbcDataModel::importDBC(const QString& filePath) {
 
     QRegularExpression reNode("^BU_:\\s*(.*)");
     QRegularExpression reMessage("^BO_\\s+(\\d+)\\s+(\\w+):\\s+(\\d+)\\s+(\\w+)");
-    QRegularExpression reSignal("^\\s+SG_\\s+(\\w+)\\s*:\\s*(\\d+)\\|(\\d+)@(\\d+)([+-])\\s+\\(([^,]+),([^\\)]+)\\)\\s+\\[([^\\|]+)\\|([^\\]]+)\\]\\s+\"([^\"]*)\"\\s+(\\w+)");
+    QRegularExpression reSignal(
+        "^\\s*SG_\\s+(\\w+)\\s*(?:([mM]\\d*[mM]?)\\s*)?:\\s*" // Signal name and optional multiplexer indicator
+        "(\\d+)\\|(\\d+)@(\\d+)([+-])\\s+"                    // Start bit, length, byte order, sign
+        "\\(([^,]+),([^\\)]+)\\)\\s+"                         // Factor and offset
+        "\\[([^\\|]+)\\|([^\\]]+)\\]\\s+"                     // Min and max
+        "\"([^\"]*)\"\\s*"                                    // Unit
+        "(.*)"                                                // Receivers
+        );
     QRegularExpression reAttributeDef("^BA_DEF_\\s+\"([^\"]+)\"\\s+(\\w+)");
     QRegularExpression reAttributeDefDef("^BA_DEF_DEF_\\s+\"([^\"]+)\"\\s+\"?([^\"]+)\"?");
     QRegularExpression reAttributeAssignment("^BA_\\s+\"([^\"]+)\"\\s+(\\w+)\\s+(\\w+)\\s+\"?([^\"]+)\"?");
@@ -47,7 +53,11 @@ bool DbcDataModel::importDBC(const QString& filePath) {
     // Set  network name to file name
     Network network;
     network.name = QFileInfo(filePath).fileName();
+    network.baud = ""; // Set baud rate
     m_networks.append(network);
+
+    // Map to keep track of nodes indices by name
+    QMap<QString, int> nodeMap;
 
     while (!in.atEnd()) {
         line = in.readLine();
@@ -59,7 +69,15 @@ bool DbcDataModel::importDBC(const QString& filePath) {
             for (const QString& nodeName : nodes) {
                 Node node;
                 node.name = nodeName.trimmed();
+
+                // Update Node-Network Association
+                NodeNetworkAssociation nodeNetworkAssociation;
+                nodeNetworkAssociation.networkName = network.name;
+                nodeNetworkAssociation.sourceAddress = 0; // TODO: Source address parsing
+                node.networks.append(nodeNetworkAssociation);
+
                 m_nodes.append(node);
+                nodeMap.insert(node.name, m_nodes.size() - 1);
             }
             continue;
         }
@@ -72,7 +90,42 @@ bool DbcDataModel::importDBC(const QString& filePath) {
             message.name = match.captured(2).trimmed();
             message.length = match.captured(3).toInt();
             QString transmitter = match.captured(4).trimmed();
-            message.messageTransmitters.append({transmitter, QString::number(message.pgn)});
+            message.priority = 0; // Initialize priority
+
+            // Add to Node-Network Assocation
+            if(!nodeMap.contains(transmitter)) {
+                qWarning() << "Transmitter node not found: " << transmitter << ". Creating new node.";
+                Node newNode;
+                newNode.name = transmitter;
+
+                // Update Node-Network Association
+                NodeNetworkAssociation nodeNetworkAssociation;
+                nodeNetworkAssociation.networkName = network.name;
+                nodeNetworkAssociation.sourceAddress = 0; // TODO: Source address parsing
+                newNode.networks.append(nodeNetworkAssociation);
+
+                m_nodes.append(newNode);
+                nodeMap.insert(transmitter, m_nodes.size() - 1);
+            }
+
+            Node& transmitterNode = m_nodes[nodeMap[transmitter]];
+            for(NodeNetworkAssociation& networkAssociation : transmitterNode.networks) {
+                if(networkAssociation.networkName == network.name) {
+                    // Check if the message already exists in the tx list
+                    bool messageExistsInTx = false;
+                    for (const TxRxMessage& txMsg : networkAssociation.tx) {
+                        if (txMsg.name == message.name) {
+                            messageExistsInTx = true;
+                            break;
+                        }
+                    }
+                    if (!messageExistsInTx) {
+                        TxRxMessage txRxMessage;
+                        txRxMessage.name = message.name;
+                        networkAssociation.tx.append(txRxMessage);
+                    }
+                }
+            }
             m_messages.append(message);
             continue;
         }
@@ -82,18 +135,94 @@ bool DbcDataModel::importDBC(const QString& filePath) {
         if (match.hasMatch()) {
             Signal signal;
             signal.name = match.captured(1).trimmed();
-            signal.startBit = match.captured(2).toInt();
-            signal.bitLength = match.captured(3).toInt();
-            signal.isBigEndian = (match.captured(4).toInt() == 1);
-            signal.isTwosComplement = (match.captured(5) == "-");
-            signal.factor = match.captured(6).toDouble();
-            signal.offset = match.captured(7).toDouble();
-            signal.scaledMin = match.captured(8).toDouble();
-            signal.scaledMax = match.captured(9).toDouble();
-            signal.units = match.captured(10).trimmed();
-            QString receiver = match.captured(11).trimmed();
+            QString multiplexerIndicator = match.captured(2).trimmed(); // Optional multiplexer indicator
+            signal.isMultiplexer = false; // Default value
+            signal.multiplexValue = -1; // Default value
+            signal.startBit = match.captured(3).toInt();
+            signal.bitLength = match.captured(4).toInt();
+            signal.isBigEndian = (match.captured(5).toInt() == 1);
+            signal.isTwosComplement = (match.captured(6) == "-");
+            signal.factor = match.captured(7).toDouble();
+            signal.offset = match.captured(8).toDouble();
+            signal.scaledMin = match.captured(9).toDouble();
+            signal.scaledMax = match.captured(10).toDouble();
+            signal.units = match.captured(11).trimmed();
+            QString receivers = match.captured(12).trimmed();
+            QStringList receiverNames = receivers.split(',', Qt::SkipEmptyParts);
+
+            // Determine if the signal is a multiplexer or multiplexed signal
+            if (!multiplexerIndicator.isEmpty()) {
+                if (multiplexerIndicator == "M") {
+                    // This is a multiplexer signal
+                    signal.isMultiplexer = true;
+                    signal.multiplexValue = -1;
+                } else if (multiplexerIndicator.startsWith('m')) {
+                    // This is a multiplexed signal, possibly also a multiplexer
+                    bool isMultiplexer = false;
+                    QString valuePart = multiplexerIndicator.mid(1);
+                    if (valuePart.endsWith('M')) {
+                        isMultiplexer = true;
+                        valuePart.chop(1); // Remove the 'M' at the end
+                    }
+                    bool ok;
+                    int value = valuePart.toInt(&ok);
+                    if (ok) {
+                        signal.multiplexValue = value;
+                        signal.isMultiplexer = isMultiplexer;
+                    } else {
+                        qWarning() << "Invalid multiplex value for signal" << signal.name << "with indicator" << multiplexerIndicator;
+                        signal.multiplexValue = -1;
+                        signal.isMultiplexer = isMultiplexer; // Set isMultiplexer based on presence of 'M' (Multiplexer)
+                    }
+                } else {
+                    qWarning() << "Unknown multiplexer indicator:" << multiplexerIndicator << "for signal" << signal.name;
+                }
+            }
+
+
+            // Parse all receiver names
+            for (const QString& receiverName : receiverNames) {
+                QString trimmedReceiverName = receiverName.trimmed();
+                if (trimmedReceiverName.isEmpty()) {
+                    qWarning() << "Receiver Names Empty";
+                    continue;
+                }
+                // Add to Node-Network Assocation
+                if(!nodeMap.contains(trimmedReceiverName)) {
+                    qWarning() << "Receiver node not found: " << trimmedReceiverName;
+                    // Create a new node and add it to m_nodes and nodeMap
+                    Node node;
+                    node.name = trimmedReceiverName;
+
+                    NodeNetworkAssociation nodeNetworkAssociation;
+                    nodeNetworkAssociation.networkName = network.name;
+                    nodeNetworkAssociation.sourceAddress = 0;
+                    node.networks.append(nodeNetworkAssociation);
+
+                    m_nodes.append(node);
+                    nodeMap.insert(node.name, m_nodes.size() - 1);
+                }
+                Node& receiverNode = m_nodes[nodeMap[trimmedReceiverName]];
+                for(NodeNetworkAssociation& networkAssociation : receiverNode.networks) {
+                    if(networkAssociation.networkName == network.name) {
+                        // Check if the message already exists in the rx list
+                        bool messageExistsInRx = false;
+                        for (const TxRxMessage& rxMsg : networkAssociation.rx) {
+                            if (rxMsg.name == m_messages.last().name) {
+                                messageExistsInRx = true;
+                                break;
+                            }
+                        }
+                        if (!messageExistsInRx) {
+                            TxRxMessage txRxMessage;
+                            txRxMessage.name = m_messages.last().name;
+                            networkAssociation.rx.append(txRxMessage);
+                        }
+                    }
+                }
+            }
+
             m_messages.last().messageSignals.append(signal);
-            m_nodes.append({receiver, {}, {}});
             continue;
         }
 
@@ -266,7 +395,7 @@ void DbcDataModel::parseJson(const QJsonObject& jsonObject) {
             signal.offset = signalObject.value("offset").toDouble(0.0);
             signal.units = signalObject.value("units").toString();
             signal.multiplexValue = signalObject.value("multiplexValue").toInt(-1);
-            signal.isMultiplexor = signalObject.value("is_multiplexor").toBool(false);
+            signal.isMultiplexer = signalObject.value("is_multiplexer").toBool(false);
 
             // Handle scaled_min, scaled_max, scaled_default
             signal.scaledMin = signalObject.value("scaled_min").toVariant();
