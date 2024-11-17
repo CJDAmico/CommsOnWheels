@@ -33,9 +33,16 @@ bool DbcDataModel::importDBC(const QString& filePath) {
 
     QTextStream in(&file);
     QString line;
+
+    QMap<QString, Attribute> defaultAttributes; // To store default attributes from BA_DEF_DEF
+    QList<Attribute> globalAttributes;         // Attributes that apply globally to all messages/signals
+
     QRegularExpression reNode("^BU_:\\s*(.*)");
     QRegularExpression reMessage("^BO_\\s+(\\d+)\\s+(\\w+):\\s+(\\d+)\\s+(\\w+)");
     QRegularExpression reSignal("^\\s+SG_\\s+(\\w+)\\s*:\\s*(\\d+)\\|(\\d+)@(\\d+)([+-])\\s+\\(([^,]+),([^\\)]+)\\)\\s+\\[([^\\|]+)\\|([^\\]]+)\\]\\s+\"([^\"]*)\"\\s+(\\w+)");
+    QRegularExpression reAttributeDef("^BA_DEF_\\s+\"([^\"]+)\"\\s+(\\w+)");
+    QRegularExpression reAttributeDefDef("^BA_DEF_DEF_\\s+\"([^\"]+)\"\\s+\"?([^\"]+)\"?");
+    QRegularExpression reAttributeAssignment("^BA_\\s+\"([^\"]+)\"\\s+(\\w+)\\s+(\\w+)\\s+\"?([^\"]+)\"?");
 
     // Set  network name to file name
     Network network;
@@ -88,6 +95,97 @@ bool DbcDataModel::importDBC(const QString& filePath) {
             m_messages.last().messageSignals.append(signal);
             m_nodes.append({receiver, {}, {}});
             continue;
+        }
+
+        // Parse attribute definitions (BA_DEF_)
+        match = reAttributeDef.match(line);
+        if (match.hasMatch()) {
+            Attribute attribute;
+            attribute.name = match.captured(1).trimmed();
+            attribute.type = match.captured(2).trimmed();
+            globalAttributes.append(attribute);
+            continue;
+        }
+
+        // Parse default values for attributes (BA_DEF_DEF_)
+        match = reAttributeDefDef.match(line);
+        if (match.hasMatch()) {
+            QString attributeName = match.captured(1).trimmed();
+            QString defaultValue = match.captured(2).trimmed();
+            if (defaultAttributes.contains(attributeName)) {
+                defaultAttributes[attributeName].value = defaultValue;
+            } else {
+                Attribute defaultAttribute;
+                defaultAttribute.name = attributeName;
+                defaultAttribute.value = defaultValue;
+                defaultAttributes.insert(attributeName, defaultAttribute);
+            }
+            continue;
+        }
+
+        // Parse assigned attributes (BA_)
+        match = reAttributeAssignment.match(line);
+        if (match.hasMatch()) {
+            QString attributeName = match.captured(1).trimmed();
+            QString targetType = match.captured(2).trimmed();
+            QString targetName = match.captured(3).trimmed();
+            QString value = match.captured(4).trimmed();
+
+            Attribute attribute;
+            attribute.name = attributeName;
+            attribute.value = value;
+
+            if (targetType == "BO_") {
+                // Assign to Message
+                for (auto& message : m_messages) {
+                    if (message.name == targetName) {
+                        message.messageAttributes.append(attribute);
+                        break;
+                    }
+                }
+            } else if (targetType == "SG_") {
+                // Assign to Signal
+                for (auto& message : m_messages) {
+                    for (auto& signal : message.messageSignals) {
+                        if (signal.name == targetName) {
+                            signal.signalAttributes.append(attribute);
+                            break;
+                        }
+                    }
+                }
+            }
+            continue;
+        }
+    }
+
+    for (auto messageIt = m_messages.begin(); messageIt != m_messages.end(); ++messageIt) {
+        auto& message = *messageIt;
+
+        // Iterate over default attributes and add to messageAttributes if not already present
+        for (auto attrIt = defaultAttributes.constBegin(); attrIt != defaultAttributes.constEnd(); ++attrIt) {
+            const Attribute& attr = *attrIt;
+
+            bool exists = std::any_of(message.messageAttributes.cbegin(), message.messageAttributes.cend(),
+                                      [&attr](const Attribute& a) { return a.name == attr.name; });
+            if (!exists) {
+                message.messageAttributes.append(attr);
+            }
+        }
+
+        // Iterate over the signals of the message
+        for (auto signalIt = message.messageSignals.begin(); signalIt != message.messageSignals.end(); ++signalIt) {
+            auto& signal = *signalIt;
+
+            // Iterate over default attributes and add to signalAttributes if not already present
+            for (auto attrIt = defaultAttributes.constBegin(); attrIt != defaultAttributes.constEnd(); ++attrIt) {
+                const Attribute& attr = *attrIt;
+
+                bool exists = std::any_of(signal.signalAttributes.cbegin(), signal.signalAttributes.cend(),
+                                          [&attr](const Attribute& a) { return a.name == attr.name; });
+                if (!exists) {
+                    signal.signalAttributes.append(attr);
+                }
+            }
         }
     }
 
