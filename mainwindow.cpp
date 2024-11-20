@@ -24,8 +24,7 @@
 #include <QFileInfo>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow), dbcTree(new DbcTree()) {
-    // Window Icon
-    // TODO: Determine icon, set to a default one for now
+    // Window Icon (Default)
     this->setWindowIcon(QIcon(":/icons/windowIcon.svg"));
 
     // Central Widget
@@ -51,6 +50,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         qDeleteAll(dbcModels);
         dbcModels.clear();
         updateDbcTree();
+        clearRightPanel();
     });
 
     QAction *openJson = new QAction("Open from JSON...", this);
@@ -85,12 +85,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
                 QMessageBox::warning(this, "Import Error", "Failed to import JSON file.");
                 delete newModel;
             }
-
-            // Inform the user the open was succesful
-            QMessageBox::information(this, "Import Successful", "JSON File Imported:\n" + selectedFile);
         }
     });
 
+    // Import DBC
     QAction *importDBC = new QAction("Import DBC...", this);
     fileMenu->addAction(importDBC);
     connect(importDBC, &QAction::triggered, this, [this]() {
@@ -114,13 +112,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
             DbcDataModel* newModel = new DbcDataModel();
             newModel->setFileName(fileInfo.fileName());
 
-            // TODO: Implement importDBC() in DbcDataModel
             if (newModel->importDBC(selectedFile)) { // Pass the selected DBC file path
                 dbcModels.append(newModel);
                 updateDbcTree();
-
-                // Inform the user the import was successful
-                QMessageBox::information(this, "Import Successful", "DBC File Imported:\n" + selectedFile);
             } else {
                 QMessageBox::warning(this, "Import Error", "Failed to import DBC file.");
                 delete newModel;
@@ -128,6 +122,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         }
     });
 
+    // Export DBC
+    QAction *exportDBC = new QAction("Export DBC...", this);
+    fileMenu->addAction(exportDBC);
+    connect(exportDBC, &QAction::triggered, this, [this]() {
+        // TODO: Implement DBC export functionality
+    });
+
+    // Save workspace as a JSON
     QAction *save = new QAction("Save", this);
     QAction *saveAs = new QAction("Save As...", this);
     fileMenu->addAction(save);
@@ -194,6 +196,34 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     // Edit Menu
     QMenu *editMenu = menuBar->addMenu("Edit");
 
+    // Add expand all action to Edit menu
+    QAction *expandAllAction = new QAction("Expand All", this);
+    editMenu->addAction(expandAllAction);
+    connect(expandAllAction, &QAction::triggered, this, [this]() {
+        QTreeWidgetItemIterator it(dbcTree);
+        while(*it) {
+            QTreeWidgetItem *item = *it;
+            if(item->childCount() > 0) {
+                item->setExpanded(true);
+            }
+            it++;
+        }
+    });
+
+    // Add collapse all action to Edit menu
+    QAction *collapseAllAction = new QAction("Collapse All", this);
+    editMenu->addAction(collapseAllAction);
+    connect(collapseAllAction, &QAction::triggered, this, [this]() {
+        QTreeWidgetItemIterator it(dbcTree);
+        while(*it) {
+            QTreeWidgetItem *item = *it;
+            if(item->childCount() > 0) {
+                item->setExpanded(false);
+            }
+            it++;
+        }
+    });
+
     // Edit Actions
     QAction *undoAction = new QAction("Undo", this);
     QAction *redoAction = new QAction("Redo", this);
@@ -209,12 +239,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     QAction *hexadecimalMode = new QAction("Hexadecimal", this);
     QAction *binaryMode = new QAction("Binary", this);
     QAction *decimalMode = new QAction("Decimal", this);
-    // this->styleMode = new QAction("Dark Mode", this);
     viewMenu->addAction(hexadecimalMode);
     viewMenu->addAction(binaryMode);
     viewMenu->addAction(decimalMode);
-    // viewMenu->addAction(styleMode);
-    // connect(styleMode, &QAction::triggered, this, &MainWindow::toggleDarkMode);  // Connect the button to the toggleDarkMode function
 
     // Help Menu
     // TODO: Create a documentation/guide
@@ -230,7 +257,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     // Search Bar
     QLineEdit *searchBar = new QLineEdit;
     searchBar->setPlaceholderText("Search...");
-
+    connect(searchBar, &QLineEdit::textChanged, this, &MainWindow::filterTreeItems);
 
     leftLayout->addWidget(searchBar);
     leftLayout->addWidget(dbcTree);
@@ -243,7 +270,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     splitter->addWidget(rightPanel);
 
     splitter->setStretchFactor(0, 1);
-    splitter->setStretchFactor(1, 1);
     splitter->updateGeometry();
 
     QVBoxLayout *mainLayout = new QVBoxLayout;
@@ -263,94 +289,91 @@ void MainWindow::addAttributeRow(QTableWidget *table, const QStringList &rowData
     }
 }
 
-// TODO: Figure out whether to use system default or custom dark mode
-// void MainWindow::toggleDarkMode() {
-//     static bool darkModeEnabled = false;
-
-
-//     if (darkModeEnabled) {
-//         // Revert to light mode
-//         qApp->setPalette(defaultPalette);
-//         this->setStyleSheet(defaultStyleSheet);
-//         this->menuBar()->setStyleSheet("");
-
-//         this->styleMode->setText("Dark Mode");
-//         darkModeEnabled = false;
-//     } else {
-//         defaultPalette = QApplication::palette();
-//         defaultStyleSheet = this->styleSheet();
-
-//         // Apply dark mode
-//         QPalette darkPalette;
-//         // Window and background colors
-//         darkPalette.setColor(QPalette::Window, QColor(53, 53, 53));
-//         darkPalette.setColor(QPalette::WindowText, Qt::white);
-//         darkPalette.setColor(QPalette::Base, QColor(42, 42, 42));
-//         darkPalette.setColor(QPalette::AlternateBase, QColor(66, 66, 66));
-//         darkPalette.setColor(QPalette::ToolTipBase, Qt::white);
-//         darkPalette.setColor(QPalette::ToolTipText, Qt::white);
-
-//         // Text and buttons
-//         darkPalette.setColor(QPalette::Text, Qt::white);
-//         darkPalette.setColor(QPalette::Button, QColor(53, 53, 53));
-//         darkPalette.setColor(QPalette::ButtonText, Qt::white);
-//         darkPalette.setColor(QPalette::BrightText, Qt::red);
-//         darkPalette.setColor(QPalette::PlaceholderText, Qt::white);
-
-//         // Highlighted text and selections
-//         darkPalette.setColor(QPalette::Highlight, Qt::white);
-//         darkPalette.setColor(QPalette::HighlightedText, Qt::black);
-
-//         // Set Menu Bar to dark style
-//         this->menuBar()->setStyleSheet("QMenuBar { background-color: #353535; color: white; } "
-//                                        "QMenuBar::item { background-color: #353535; color: white; } "
-//                                        "QMenuBar::item:selected { background-color: #454545; } "
-//                                        "QMenuBar::item:pressed { background-color: #252525; } "
-//                                        "QMenu { background-color: #353535; color: white; } "
-//                                        "QMenu::item:selected { background-color: #454545; }");
-
-//         this->styleMode->setText("Light Mode");
-//         qApp->setPalette(darkPalette);
-
-//         QString newStyleSheet = "QTableView::item:selected { background-color: #55aaff; color: black; } "
-//                                 "QListView::item:selected { background-color: #55aaff; color: black; } "
-//                                 "QTreeView::item:selected { background-color: #55aaff; color: black; } "
-//                                 "QTreeView { outline: 0; }"
-//                                 "QListView { outline: 0; }"
-//                                 "QTableView { outline: 0; }";
-
-//         this->setStyleSheet(this->styleSheet() + newStyleSheet);
-//         darkModeEnabled = true;
-//     }
-// }
-
 void MainWindow::updateDbcTree()
 {
     dbcTree->populateTree(dbcModels);
 }
 
-void MainWindow::onTreeItemClicked(QTreeWidgetItem* item, int column)
+void MainWindow::filterTreeItems(const QString &filterText) {
+    QTreeWidgetItemIterator it(dbcTree);
+
+    while (*it) {
+        QTreeWidgetItem *item = *it;
+        QString itemType = item->data(0, Qt::UserRole).toString();
+
+        // Always show category bars
+        if (itemType == "Category") {
+            item->setHidden(false);
+            item->setExpanded(true);
+        } else {
+            bool match = item->text(0).contains(filterText, Qt::CaseInsensitive);
+            bool hasMatchingChild = false;
+
+            // Check if any child matches the filter, including nested children
+            for (int i = 0; i < item->childCount(); ++i) {
+                QTreeWidgetItem *child = item->child(i);
+                bool childMatch = child->text(0).contains(filterText, Qt::CaseInsensitive);
+                bool hasMatchingGrandchild = false;
+
+                // Check if any grandchild matches the filter
+                for (int j = 0; j < child->childCount(); ++j) {
+                    QTreeWidgetItem *grandchild = child->child(j);
+                    if (grandchild->text(0).contains(filterText, Qt::CaseInsensitive)) {
+                        grandchild->setHidden(false);
+                        hasMatchingGrandchild = true;
+                    } else {
+                        grandchild->setHidden(true);
+                    }
+                }
+
+                if (childMatch || hasMatchingGrandchild) {
+                    child->setHidden(false);
+                    child->setExpanded(hasMatchingGrandchild); // Expand if it has matching grandchildren
+                    hasMatchingChild = true;
+                } else {
+                    child->setHidden(true);
+                }
+            }
+
+            // If the item itself or any of its children matches, make it visible
+            if (match || hasMatchingChild) {
+                item->setHidden(false);
+                item->setExpanded(hasMatchingChild || match); // Expand if it has matching children or if the item matches
+            } else {
+                item->setHidden(true);
+            }
+        }
+
+        ++it;
+    }
+}
+
+
+
+void MainWindow::onTreeItemClicked(QTreeWidgetItem* item)
 {
     if (!item) return;
 
     QString itemType = item->data(0, Qt::UserRole).toString();
     QString name = item->text(0);
-    QStringList models = item->data(0, Qt::UserRole + 1).toStringList();
+    QString model = item->data(0, Qt::UserRole + 1).toString();
 
     // Clear existing tabs
     clearRightPanel();
 
+    currentTreeItem = item;
+
     if (itemType == "Message" || itemType == "TxMessage" || itemType == "RxMessage") {
-        handleMessageItem(item, name, models);
+        handleMessageItem(item, name, model);
     }
     else if (itemType == "Signal") {
-        handleSignalItem(item, name, models);
+        handleSignalItem(item, name, model);
     }
     else if (itemType == "Network") {
-        handleNetworkItem(item, name, models);
+        handleNetworkItem(item, name, model);
     }
     else if (itemType == "Node") {
-        handleNodeItem(item, name, models);
+        handleNodeItem(item, name, model);
     }
 
     // Adjust splitter if needed
@@ -366,17 +389,11 @@ void MainWindow::onTreeItemClicked(QTreeWidgetItem* item, int column)
     }
 }
 
-void MainWindow::handleMessageItem(QTreeWidgetItem* item, const QString& name, const QStringList& models)
+void MainWindow::handleMessageItem(QTreeWidgetItem* item, const QString& name, const QString& modelName)
 {
-    if (models.isEmpty()) {
-        QMessageBox::warning(this, "Error", "No associated models found for this message.");
-        return;
-    }
-
-    QString modelFileName = models.first();
     DbcDataModel* model = nullptr;
     for (DbcDataModel* m : dbcModels) {
-        if (m->fileName() == modelFileName) {
+        if (m->fileName() == modelName) {
             model = m;
             break;
         }
@@ -403,6 +420,10 @@ void MainWindow::handleMessageItem(QTreeWidgetItem* item, const QString& name, c
         return;
     }
 
+    // Assign the found message to the context-wide variable
+    currentMessage = message;
+
+
     QString txRxType;
     QString itemType = item->data(0, Qt::UserRole).toString();
     if (itemType == "TxMessage" || itemType == "RxMessage") {
@@ -419,8 +440,8 @@ void MainWindow::handleMessageItem(QTreeWidgetItem* item, const QString& name, c
     descLineEdit->setText(message->description);
     prioritySpinBox->setValue(message->priority);
     lengthSpinBox->setValue(message->length);
-    extendedDataPageCheckBox->setChecked(false);
-    dataPageCheckBox->setChecked(false);
+    extendedDataPageCheckBox->setChecked(message->extendedDataPage);
+    dataPageCheckBox->setChecked(message->dataPage);
 
     // Update attributes table
     messageAttributesTable->setRowCount(0);
@@ -433,6 +454,36 @@ void MainWindow::handleMessageItem(QTreeWidgetItem* item, const QString& name, c
     for (const Signal& signal : message->messageSignals) {
         signalsList->addItem(signal.name);
     }
+
+    // Connect the signalsList item click event
+    connect(signalsList, &QListWidget::itemDoubleClicked, this, [this](QListWidgetItem* item) {
+        QString signalName = item->text();
+
+        // Locate the QTreeWidgetItem corresponding to the signal name
+        if (currentTreeItem) {
+            QTreeWidgetItem* signalsCategoryItem = nullptr;
+
+            // Traverse through children of currentMessageItem to find the <Signals> node
+            for (int i = 0; i < currentTreeItem->childCount(); ++i) {
+                if (currentTreeItem->child(i)->text(0) == "<Signals>") {
+                    signalsCategoryItem = currentTreeItem->child(i);
+                    break;
+                }
+            }
+
+            // Now find the signal item within the <Signals> category
+            if (signalsCategoryItem) {
+                for (int i = 0; i < signalsCategoryItem->childCount(); ++i) {
+                    QTreeWidgetItem* signalItem = signalsCategoryItem->child(i);
+                    if (signalItem->text(0) == signalName) {
+                        dbcTree->setCurrentItem(signalItem);
+                        onTreeItemClicked(signalItem);
+                        break;
+                    }
+                }
+            }
+        }
+    });
 
     // Show the Definition tab
     if (rightPanel->indexOf(definitionTab) == -1) {
@@ -461,14 +512,11 @@ void MainWindow::handleMessageItem(QTreeWidgetItem* item, const QString& name, c
         rightPanel->addTab(receiversTab, "Receivers");
     }
 
-
-
     // Populate the combo box with multiplexer values
     multiplexerComboBox->clear();
     multiplexerComboBox->addItem("No Multiplexer", -1);
     for (Signal& signal : message->messageSignals) {
         if(signal.isMultiplexer) {
-            qDebug() << "enumerations found";
             for(Enumeration& enumeration : signal.enumerations) {
                 QString hexValue = QString("0x") + QString::number(enumeration.value, 16).toUpper();
                 multiplexerComboBox->addItem(signal.name + ": " + hexValue + " (" + enumeration.name + ")", enumeration.value);
@@ -479,9 +527,6 @@ void MainWindow::handleMessageItem(QTreeWidgetItem* item, const QString& name, c
     // Disconnect any existing connections to prevent multiple triggers
     disconnect(multiplexerComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
                this, nullptr);
-
-    // Assign selected message to context wide variable
-    currentMessage = message;
 
     // Connect the combo box signal to update multiplexerValue
     connect(multiplexerComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
@@ -495,6 +540,80 @@ void MainWindow::handleMessageItem(QTreeWidgetItem* item, const QString& name, c
 
     displayBitLayout(*message, message->multiplexValue);
 
+    // Connect pgnLineEdit to handle PGN changes
+    connect(pgnLineEdit, &QLineEdit::textChanged, this, [this, item](const QString &text) {
+        if (currentMessage) {
+            bool ok;
+            quint64 newPgn = text.toULongLong(&ok, 16);
+            if (ok && newPgn != currentMessage->pgn) {
+                // Update the PGN in the tree item and ensure all references are updated
+                item->setData(0, Qt::UserRole + 2, QString::number(newPgn));
+
+                // Iterate through all items and update PGN references where applicable
+                QList<QTreeWidgetItem *> items = dbcTree->findItems(QString::number(currentMessage->pgn), Qt::MatchExactly | Qt::MatchRecursive);
+                for (QTreeWidgetItem *currentItem : items) {
+                    if (currentItem->data(0, Qt::UserRole + 2).toString() == QString::number(currentMessage->pgn)) {
+                        currentItem->setData(0, Qt::UserRole + 2, QString::number(newPgn));
+                    }
+                }
+
+                currentMessage->pgn = newPgn;
+            }
+        }
+    });
+
+    // Connect nameLineEdit to handle name changes
+    connect(nameLineEdit, &QLineEdit::textChanged, this, [this, item](const QString &text) {
+        if (currentMessage && !text.isEmpty() && text != currentMessage->name) {
+            // Update the name in the tree item
+            item->setText(0, text);
+
+            // Update all tree items that reference the old name
+            QList<QTreeWidgetItem *> items = dbcTree->findItems(currentMessage->name, Qt::MatchExactly | Qt::MatchRecursive);
+            for (QTreeWidgetItem *currentItem : items) {
+                if (currentItem->text(0) == currentMessage->name) {
+                    currentItem->setText(0, text);
+                }
+            }
+            currentMessage->name = text;
+        }
+    });
+
+    // Connect descLineEdit to handle description changes
+    connect(descLineEdit, &QLineEdit::textChanged, this, [this](const QString &text) {
+        if (currentMessage) {
+            currentMessage->description = text;
+        }
+    });
+
+    // Connect prioritySpinBox to handle priority changes
+    connect(prioritySpinBox, QOverload<int>::of(&QSpinBox::valueChanged), this, [this](int value) {
+        if (currentMessage) {
+            currentMessage->priority = value;
+        }
+    });
+
+    // Connect lengthSpinBox to handle length changes
+    connect(lengthSpinBox, QOverload<int>::of(&QSpinBox::valueChanged), this, [this](int value) {
+        if (currentMessage) {
+            currentMessage->length = value;
+        }
+    });
+
+    // Connect extendedDataPageCheckBox to handle extended data page changes
+    connect(extendedDataPageCheckBox, &QCheckBox::toggled, this, [this](bool checked) {
+        if (currentMessage) {
+            currentMessage->extendedDataPage = checked;
+        }
+    });
+
+    // Connect dataPageCheckBox to handle data page changes
+    connect(dataPageCheckBox, &QCheckBox::toggled, this, [this](bool checked) {
+        if (currentMessage) {
+            currentMessage->dataPage = checked;
+        }
+    });
+
     // Show layout tab
     if (rightPanel->indexOf(layoutTab) == -1) {
         rightPanel->addTab(layoutTab, "Layout");
@@ -504,17 +623,11 @@ void MainWindow::handleMessageItem(QTreeWidgetItem* item, const QString& name, c
 }
 
 
-void MainWindow::handleSignalItem(QTreeWidgetItem* item, const QString& name, const QStringList& models)
+void MainWindow::handleSignalItem(QTreeWidgetItem* item, const QString& name, const QString& modelName)
 {
-    if (models.isEmpty()) {
-        QMessageBox::warning(this, "Error", "No associated models found for this signal.");
-        return;
-    }
-
-    QString modelFileName = models.first();
     DbcDataModel* model = nullptr;
     for (DbcDataModel* m : dbcModels) {
-        if (m->fileName() == modelFileName) {
+        if (m->fileName() == modelName) {
             model = m;
             break;
         }
@@ -540,8 +653,8 @@ void MainWindow::handleSignalItem(QTreeWidgetItem* item, const QString& name, co
 
     QString messageUniqueKey = parentItem->data(0, Qt::UserRole + 2).toString();
 
-    const Message* message = nullptr;
-    for (const Message& msg : model->messages()) {
+    Message* message = nullptr;
+    for (Message& msg : model->messages()) {
         if (QString::number(msg.pgn) == messageUniqueKey) {
             message = &msg;
             break;
@@ -554,8 +667,8 @@ void MainWindow::handleSignalItem(QTreeWidgetItem* item, const QString& name, co
     }
 
     // Find the signal by name
-    const Signal* signal = nullptr;
-    for (const Signal& sig : message->messageSignals) {
+    Signal* signal = nullptr;
+    for (Signal& sig : message->messageSignals) {
         if (sig.name.trimmed() == name.trimmed()) {
             signal = &sig;
             break;
@@ -566,6 +679,8 @@ void MainWindow::handleSignalItem(QTreeWidgetItem* item, const QString& name, co
         QMessageBox::warning(this, "Error", "Signal not found in the message.");
         return;
     }
+
+    currentSignal = signal;
 
     // Populate Signal tab
     spnSpinBox->setValue(signal->spn);
@@ -595,6 +710,87 @@ void MainWindow::handleSignalItem(QTreeWidgetItem* item, const QString& name, co
         enumerationsTable->setItem(row, 2, new QTableWidgetItem(enumVal.description));
     }
 
+    // Connect SPN SpinBox to handle SPN changes
+    connect(spnSpinBox, QOverload<int>::of(&QSpinBox::valueChanged), this, [this](int value) {
+        if (currentSignal) {
+            currentSignal->spn = value;
+        }
+    });
+
+    // Connect signalNameLineEdit to handle name changes
+    connect(signalNameLineEdit, &QLineEdit::textChanged, this, [this, item](const QString &text) {
+        if (currentSignal) {
+            // Update the name in the tree item
+            item->setText(0, text);
+
+            // Update all tree items that reference the old name
+            QList<QTreeWidgetItem *> items = dbcTree->findItems(currentMessage->name, Qt::MatchExactly | Qt::MatchRecursive);
+            for (QTreeWidgetItem *currentItem : items) {
+                if (currentItem->text(0) == currentMessage->name) {
+                    currentItem->setText(0, text);
+                }
+            }
+
+            currentSignal->name = text;
+        }
+    });
+
+    // Connect signalDescLineEdit to handle description changes
+    connect(signalDescLineEdit, &QLineEdit::textChanged, this, [this](const QString &text) {
+        if (currentSignal) {
+            currentSignal->description = text;
+        }
+    });
+
+    // Connect startBitSpinBox to handle start bit changes
+    connect(startBitSpinBox, QOverload<int>::of(&QSpinBox::valueChanged), this, [this](int value) {
+        if (currentSignal) {
+            currentSignal->startBit = value;
+        }
+    });
+
+    // Connect bitLengthSpinBox to handle bit length changes
+    connect(bitLengthSpinBox, QOverload<int>::of(&QSpinBox::valueChanged), this, [this](int value) {
+        if (currentSignal) {
+            currentSignal->bitLength = value;
+        }
+    });
+
+    // Connect isBigEndianCheckBox to handle endianness changes
+    connect(isBigEndianCheckBox, &QCheckBox::toggled, this, [this](bool checked) {
+        if (currentSignal) {
+            currentSignal->isBigEndian = checked;
+        }
+    });
+
+    // Connect isTwosComplementCheckBox to handle two's complement changes
+    connect(isTwosComplementCheckBox, &QCheckBox::toggled, this, [this](bool checked) {
+        if (currentSignal) {
+            currentSignal->isTwosComplement = checked;
+        }
+    });
+
+    // Connect factorSpinBox to handle factor changes
+    connect(factorSpinBox, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](double value) {
+        if (currentSignal) {
+            currentSignal->factor = value;
+        }
+    });
+
+    // Connect offsetSpinBox to handle offset changes
+    connect(offsetSpinBox, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](double value) {
+        if (currentSignal) {
+            currentSignal->offset = value;
+        }
+    });
+
+    // Connect unitsLineEdit to handle unit changes
+    connect(unitsLineEdit, &QLineEdit::textChanged, this, [this](const QString &text) {
+        if (currentSignal) {
+            currentSignal->units = text;
+        }
+    });
+
     // Show the Signal tab
     if (rightPanel->indexOf(signalTab) == -1) {
         rightPanel->addTab(signalTab, "Signal");
@@ -604,19 +800,12 @@ void MainWindow::handleSignalItem(QTreeWidgetItem* item, const QString& name, co
 }
 
 
-void MainWindow::handleNetworkItem(QTreeWidgetItem* item, const QString& name, const QStringList& models)
+void MainWindow::handleNetworkItem(QTreeWidgetItem* item, const QString& name, const QString& modelName)
 {
-    if (models.isEmpty()) {
-        QMessageBox::warning(this, "Error", "No associated models found for this network.");
-        return;
-    }
-
-    QString modelFileName = models.first();
     DbcDataModel* model = nullptr;
-
     // Find the corresponding model
     for (DbcDataModel* m : dbcModels) {
-        if (m->fileName().trimmed() == modelFileName.trimmed()) {
+        if (m->fileName().trimmed() == modelName) {
             model = m;
             break;
         }
@@ -627,15 +816,15 @@ void MainWindow::handleNetworkItem(QTreeWidgetItem* item, const QString& name, c
         return;
     }
 
-    const QList<Network>& networks = model->networks();
+    QList<Network>& networks = model->networks();
     if (networks.isEmpty()) {
         qCritical() << "No networks found in the model!";
         return;
     }
 
     // Find the network by name
-    const Network* network = nullptr;
-    for (const Network& net : networks) {
+    Network* network = nullptr;
+    for (Network& net : networks) {
         if (net.name.trimmed() == name.trimmed()) {
             network = &net;
             break;
@@ -653,6 +842,8 @@ void MainWindow::handleNetworkItem(QTreeWidgetItem* item, const QString& name, c
         return;
     }
 
+    currentNetwork = network;
+
     // Populate the network tab fields
     networkNameLineEdit->setText(network->name);
     baudRateLineEdit->setText(network->baud);
@@ -663,6 +854,63 @@ void MainWindow::handleNetworkItem(QTreeWidgetItem* item, const QString& name, c
         addAttributeRow(networkAttributesTable, { attribute.name, attribute.type, attribute.value });
     }
 
+    // Connect Network Name to handle name changes
+    connect(networkNameLineEdit, &QLineEdit::textChanged, this, [this, item](const QString &text) {
+        if (currentNetwork && !text.isEmpty() && text != currentNetwork->name) {
+            // Check if the new name is unique in the network list
+            bool unique = true;
+            for (DbcDataModel* model : dbcModels) {
+                for (Network& net : model->networks()) {
+                    if (net.name == text) {
+                        unique = false;
+                        break;
+                    }
+                }
+                if(!unique) {
+                    break;
+                }
+            }
+            if (!unique) {
+                QMessageBox::warning(this, "Name Conflict", "The network name must be unique. Please choose a different name.");
+                networkNameLineEdit->setText(currentNetwork->name); // Revert to the original name
+                return;
+            }
+
+            // Update the name in the data model
+            QString oldName = currentNetwork->name;
+            currentNetwork->name = text;
+
+            // Update the tree item for the current network node
+            item->setText(0, text);
+
+            // Update all references to the old network name in the tree widget
+            QList<QTreeWidgetItem *> items = dbcTree->findItems(oldName, Qt::MatchExactly | Qt::MatchRecursive);
+            for (QTreeWidgetItem *currentItem : items) {
+                if (currentItem->text(0) == oldName) {
+                    currentItem->setText(0, text);
+                }
+            }
+
+            // Update all nodes that reference this network
+            for (DbcDataModel* model : dbcModels) {
+                for (Node& node : model->nodes()) {
+                    for (NodeNetworkAssociation& association : node.networks) {
+                        if (association.networkName == oldName) {
+                            association.networkName = text;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Connect Baud Rate to handle rate changes
+    connect(baudRateLineEdit, &QLineEdit::textChanged, this, [this, item](const QString &text) {
+        if (currentNetwork) {
+            currentNetwork->baud = text;
+        }
+    });
+
     // Show the Network tab
     if (rightPanel->indexOf(networkTab) == -1) {
         rightPanel->addTab(networkTab, "Network");
@@ -671,18 +919,11 @@ void MainWindow::handleNetworkItem(QTreeWidgetItem* item, const QString& name, c
 }
 
 
-
-void MainWindow::handleNodeItem(QTreeWidgetItem* item, const QString& name, const QStringList& models)
+void MainWindow::handleNodeItem(QTreeWidgetItem* item, const QString& name, const QString& modelName)
 {
-    if (models.isEmpty()) {
-        QMessageBox::warning(this, "Error", "No associated models found for this node.");
-        return;
-    }
-
-    QString modelFileName = models.first();
     DbcDataModel* model = nullptr;
     for (DbcDataModel* m : dbcModels) {
-        if (m->fileName() == modelFileName) {
+        if (m->fileName() == modelName) {
             model = m;
             break;
         }
@@ -693,8 +934,8 @@ void MainWindow::handleNodeItem(QTreeWidgetItem* item, const QString& name, cons
         return;
     }
 
-    const Node* node = nullptr;
-    for (const Node& n : model->nodes()) {
+    Node* node = nullptr;
+    for (Node& n : model->nodes()) {
         if (n.name.trimmed() == name) {
             node = &n;
             break;
@@ -705,6 +946,8 @@ void MainWindow::handleNodeItem(QTreeWidgetItem* item, const QString& name, cons
         QMessageBox::warning(this, "Error", "Node not found in the model.");
         return;
     }
+
+    currentNode = node;
 
     nodeNameLineEdit->setText(node->name);
     nodeAddressTable->setRowCount(0);
@@ -729,6 +972,43 @@ void MainWindow::handleNodeItem(QTreeWidgetItem* item, const QString& name, cons
         addAttributeRow(nodeAttributesTable, { attribute.name, attribute.type, attribute.value });
     }
 
+    // Connect Node Name to handle name changes
+    connect(nodeNameLineEdit, &QLineEdit::textChanged, this, [this, item](const QString &text) {
+        if (currentNode) {
+            // Update the name in the data model
+            QString oldName = currentNode->name;
+            currentNode->name = text;
+
+            // Update the tree item for the current node
+            item->setText(0, text);
+
+            // Update all references to the old node name in the tree widget
+            QList<QTreeWidgetItem *> items = dbcTree->findItems(oldName, Qt::MatchExactly | Qt::MatchRecursive);
+            for (QTreeWidgetItem *currentItem : items) {
+                if (currentItem->text(0) == oldName) {
+                    currentItem->setText(0, text);
+                }
+            }
+
+            // Update the transmitters and receivers tables in messages
+            for (DbcDataModel* model : dbcModels) {
+                for (Message& message : model->messages()) {
+                    for (auto& transmitter : message.messageTransmitters) {
+                        if (transmitter.first == oldName) {
+                            transmitter.first = text;
+                        }
+                    }
+
+                    for (auto& receiver : message.messageReceivers) {
+                        if (receiver.first == oldName) {
+                            receiver.first = text;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
     // Show the node tab
     if (rightPanel->indexOf(nodeTab) == -1) {
         rightPanel->addTab(nodeTab, "Node");
@@ -737,12 +1017,17 @@ void MainWindow::handleNodeItem(QTreeWidgetItem* item, const QString& name, cons
     rightPanel->setCurrentWidget(nodeTab);
 }
 
-
-
 void MainWindow::setupRightPanel()
 {
     // Initialize widgets
     rightPanel = new QTabWidget;
+
+    // Initialize selections
+    currentNetwork = nullptr;
+    currentNode = nullptr;
+    currentMessage = nullptr;
+    currentSignal = nullptr;
+    currentTreeItem = nullptr;
 
     //--------Messages--------------------
     // Definition
@@ -809,7 +1094,7 @@ void MainWindow::setupRightPanel()
 
     // Set up the Definition Form Layout
     definitionFormLayout->addRow("PGN:", pgnLineEdit);
-    definitionFormLayout->addRow("Name:", nameLineEdit);
+    definitionFormLayout->addRow("Message Name:", nameLineEdit);
     definitionFormLayout->addRow("Description:", descLineEdit);
     definitionFormLayout->addRow("Priority:", prioritySpinBox);
     definitionFormLayout->addRow("Length:", lengthSpinBox);
@@ -855,7 +1140,7 @@ void MainWindow::setupRightPanel()
 
     // Node Tab
     nodeAddressTable->setColumnCount(2);
-    nodeAddressTable->setHorizontalHeaderLabels({"Network Name", "Network Address"});
+    nodeAddressTable->setHorizontalHeaderLabels({"Network Name", "Source Address"});
     nodeFormLayout->addRow("Node Name:", nodeNameLineEdit);
     nodeFormLayout->addRow(new QLabel("Node Address:"));
     nodeFormLayout->addRow(nodeAddressTable);
@@ -868,7 +1153,7 @@ void MainWindow::setupRightPanel()
 
     // Signal Tab
     signalFormLayout->addRow("SPN:", spnSpinBox);
-    signalFormLayout->addRow("Name:", signalNameLineEdit);
+    signalFormLayout->addRow("Signal Name:", signalNameLineEdit);
     signalFormLayout->addRow("Description:", signalDescLineEdit);
     signalFormLayout->addRow("Start Bit:", startBitSpinBox);
     signalFormLayout->addRow("Bit Length:", bitLengthSpinBox);
@@ -911,6 +1196,36 @@ void MainWindow::setupRightPanel()
 
 void MainWindow::clearRightPanel()
 {
+    // Disconnect Network UI fields
+    disconnect(networkNameLineEdit, &QLineEdit::textChanged, nullptr, nullptr);
+    disconnect(baudRateLineEdit, &QLineEdit::textChanged, nullptr, nullptr);
+
+    // Disconnect Node UI fields
+    disconnect(nodeNameLineEdit, &QLineEdit::textChanged, nullptr, nullptr);
+
+    // Disconnect Message UI fields
+    disconnect(pgnLineEdit, &QLineEdit::textChanged, this, nullptr);
+    disconnect(nameLineEdit, &QLineEdit::textChanged, this, nullptr);
+    disconnect(descLineEdit, &QLineEdit::textChanged, this, nullptr);
+    disconnect(prioritySpinBox, QOverload<int>::of(&QSpinBox::valueChanged), this, nullptr);
+    disconnect(lengthSpinBox, QOverload<int>::of(&QSpinBox::valueChanged), this, nullptr);
+    disconnect(extendedDataPageCheckBox, &QCheckBox::toggled, this, nullptr);
+    disconnect(dataPageCheckBox, &QCheckBox::toggled, this, nullptr);
+    disconnect(signalsList, &QListWidget::itemDoubleClicked, this, nullptr);
+
+    // Disconnect Signal UI fields
+    disconnect(spnSpinBox, QOverload<int>::of(&QSpinBox::valueChanged), nullptr, nullptr);
+    disconnect(signalNameLineEdit, &QLineEdit::textChanged, nullptr, nullptr);
+    disconnect(signalDescLineEdit, &QLineEdit::textChanged, nullptr, nullptr);
+    disconnect(startBitSpinBox, QOverload<int>::of(&QSpinBox::valueChanged), nullptr, nullptr);
+    disconnect(bitLengthSpinBox, QOverload<int>::of(&QSpinBox::valueChanged), nullptr, nullptr);
+    disconnect(isBigEndianCheckBox, &QCheckBox::toggled, nullptr, nullptr);
+    disconnect(isTwosComplementCheckBox, &QCheckBox::toggled, nullptr, nullptr);
+    disconnect(factorSpinBox, QOverload<double>::of(&QDoubleSpinBox::valueChanged), nullptr, nullptr);
+    disconnect(offsetSpinBox, QOverload<double>::of(&QDoubleSpinBox::valueChanged), nullptr, nullptr);
+    disconnect(unitsLineEdit, &QLineEdit::textChanged, nullptr, nullptr);
+
+
     // Remove all tabs
     while (rightPanel->count() > 0) {
         rightPanel->removeTab(0);
@@ -933,7 +1248,6 @@ void MainWindow::clearRightPanel()
     receiversTable->setRowCount(0);
     bitGrid->setRowCount(0);
     bitGrid->setColumnCount(0);
-    currentMessage = nullptr;
     disconnect(multiplexerComboBox, nullptr, this, nullptr);
     signalsList->clear();
 

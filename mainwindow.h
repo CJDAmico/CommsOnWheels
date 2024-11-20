@@ -28,12 +28,13 @@ public:
     ~MainWindow();
 
 private slots:
-    void onTreeItemClicked(QTreeWidgetItem* item, int column);
+    void onTreeItemClicked(QTreeWidgetItem* item);
     // Handle selection of node types to open tabs
-    void handleMessageItem(QTreeWidgetItem* item, const QString& name, const QStringList& models);
-    void handleSignalItem(QTreeWidgetItem* item, const QString& name, const QStringList& models);
-    void handleNetworkItem(QTreeWidgetItem* item, const QString& name, const QStringList& models);
-    void handleNodeItem(QTreeWidgetItem* item, const QString& name, const QStringList& models);
+    void handleMessageItem(QTreeWidgetItem* item, const QString& name, const QString& modelName);
+    void handleSignalItem(QTreeWidgetItem* item, const QString& name, const QString& modelName);
+    void handleNetworkItem(QTreeWidgetItem* item, const QString& name, const QString& modelName);
+    void handleNodeItem(QTreeWidgetItem* item, const QString& name, const QString& modelName);
+    void filterTreeItems(const QString &filterText);
 
 private:
     Ui::MainWindow *ui;
@@ -41,11 +42,6 @@ private:
     DbcTree* dbcTree;
 
     void addAttributeRow(QTableWidget *table, const QStringList &rowData);
-    // void toggleDarkMode();
-    // QAction *styleMode;
-    // QPalette defaultPalette;
-    // QString defaultStyleSheet;
-
     void updateDbcTree();
     void setupRightPanel();
     void clearRightPanel();
@@ -88,7 +84,6 @@ private:
     QFormLayout *layoutFormLayout;
     QTableWidget *bitGrid;
     QComboBox *multiplexerComboBox;
-    Message *currentMessage;
 
     // 64 possible colors for signals in the layout tab, circular array accessed by using colors index
     int colorsIndex;
@@ -138,6 +133,11 @@ private:
     QTableWidget *enumerationsTable;
     QTableWidget *signalAttributesTable;
 
-
+    // UI Selections
+    Network *currentNetwork;
+    Node *currentNode;
+    Message *currentMessage;
+    Signal *currentSignal;
+    QTreeWidgetItem* currentTreeItem;
 };
 #endif // MAINWINDOW_H

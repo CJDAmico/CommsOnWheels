@@ -79,6 +79,8 @@ class Message {
         int txPeriodicity;       // Optional, defaults to 0
         int multiplexValue;      // Optional, default to -1
         bool txOnChange;         // Optional, defaults to false
+        bool dataPage = false;
+        bool extendedDataPage = false;
         QList<Signal> messageSignals;      // Optional, defaults to empty list
         QList<Network> messageNetworks;      // Optional, defaults to empty list
         QList<Attribute> messageAttributes;  // Optional, defaults to empty list
