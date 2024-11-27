@@ -43,9 +43,13 @@ private:
 
     void addAttributeRow(QTableWidget *table, const QStringList &rowData);
     void updateDbcTree();
+    void saveAsJson(const QString& filePath);
     void setupRightPanel();
     void clearRightPanel();
     void displayBitLayout(Message &message, int selectedMultiplexer);
+
+    // Current File
+    QString saveFilePath;
 
     // Left and Right Tab Splitter
     QSplitter *splitter;

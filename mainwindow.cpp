@@ -22,6 +22,7 @@
 #include <QDir>
 #include <QSettings>
 #include <QFileInfo>
+#include <QJsonDocument>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow), dbcTree(new DbcTree()) {
     // Window Icon (Default)
@@ -50,6 +51,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         qDeleteAll(dbcModels);
         dbcModels.clear();
         updateDbcTree();
+        saveFilePath = NULL;
         clearRightPanel();
     });
 
@@ -77,6 +79,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
             DbcDataModel* newModel = new DbcDataModel();
             newModel->setFileName(fileInfo.fileName());
             if (newModel->loadJson(selectedFile)) {
+                saveFilePath = selectedFile;
                 qDeleteAll(dbcModels);
                 dbcModels.clear();
                 dbcModels.append(newModel);
@@ -136,8 +139,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     fileMenu->addAction(saveAs);
 
     connect(save, &QAction::triggered, this, [this]() {
-        // Define the JSON directory path
-        QString jsonDirPath = "./JSON";
+        // Default JSON save path
+        QString jsonDirPath = QDir::current().filePath("Saves/");
 
         // Ensure the JSON directory exists
         QDir jsonDir;
@@ -145,46 +148,37 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
             jsonDir.mkpath(jsonDirPath);
         }
 
-        // Generate a unique default file name (e.g., based on current timestamp)
-        QString defaultFileName = QString("DbcData_%1.json")
-                                      .arg(QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss"));
+        // If no previous save, generate a unique default file name (e.g., based on current timestamp)
+        if(saveFilePath.isNull() || saveFilePath.isEmpty()) {
+            QString defaultFileName = QString("DbcData_%1.json").arg(QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss"));
+            saveFilePath = jsonDirPath + QDir::separator() + defaultFileName;
+        }
 
-        // Construct the full file path
-        QString filePath = jsonDirPath + QDir::separator() + defaultFileName;
-
-        // TODO: Convert the current list of DbcDataModels into a single JSON
-        // QJsonDocument jsonDoc; // Placeholder for the JSON document
-
-        // TODO: Save the JSON document to the specified file path
-        // Example:
-        // QFile file(filePath);
-        // if (file.open(QIODevice::WriteOnly)) {
-        //     file.write(jsonDoc.toJson());
-        //     file.close();
-        // }
+        if (!saveFilePath.isEmpty()) {
+            saveAsJson(saveFilePath);
+        }
     });
 
     connect(saveAs, &QAction::triggered, this, [this]() {
+        QString defaultPath;
+        if(saveFilePath.isNull() || saveFilePath.isEmpty()) {
+            defaultPath = QDir::current().filePath("JSON/DbcData.json");
+        } else {
+            defaultPath = saveFilePath;
+        }
         // Open a QFileDialog to let the user select the save location and file name
-        QString selectedFilePath = QFileDialog::getSaveFileName(
+        QString savePath = QFileDialog::getSaveFileName(
             this,
-            tr("Save DBC Data As"),
-            "./JSON/DbcData.json", // Default file name and directory
-            tr("JSON Files (*.json);;All Files (*)")
+            tr("Save Workspace As"),
+            defaultPath,
+            tr("JSON Files (*.json)")
             );
 
-        // Check if the user selected a file
-        if (!selectedFilePath.isEmpty()) {
-            // TODO: Convert the current list of DbcDataModels into a single JSON
-            // QJsonDocument jsonDoc; // Placeholder for the JSON document
 
-            // TODO: Save the JSON document to the selected file path
-            // Example:
-            // QFile file(selectedFilePath);
-            // if (file.open(QIODevice::WriteOnly)) {
-            //     file.write(jsonDoc.toJson());
-            //     file.close();
-            // }
+        // Check if the user selected a file path
+        if (!savePath.isEmpty()) {
+            saveFilePath = savePath;
+            saveAsJson(savePath);
         }
     });
 
@@ -292,6 +286,124 @@ void MainWindow::addAttributeRow(QTableWidget *table, const QStringList &rowData
 void MainWindow::updateDbcTree()
 {
     dbcTree->populateTree(dbcModels);
+}
+
+void MainWindow::saveAsJson(const QString& filePath) {
+    QJsonArray busesArray;
+    QJsonArray messagesArray;
+    QJsonArray nodesArray;
+
+    for (const auto& model : dbcModels) {
+        // Convert Networks to JSON
+        for (const auto& network : model->networks()) {
+            QJsonObject networkObj;
+            networkObj["name"] = network.name;
+            networkObj["baud"] = network.baud;
+
+            QJsonArray attributesArray;
+            for (const auto& attribute : network.networkAttributes) {
+                QJsonObject attributeObj;
+                attributeObj["name"] = attribute.name;
+                attributeObj["type"] = attribute.type;
+                attributeObj["value"] = attribute.value;
+                attributesArray.append(attributeObj);
+            }
+            networkObj["networkAttributes"] = attributesArray;
+            busesArray.append(networkObj);
+        }
+
+        // Convert Messages to JSON
+        for (const auto& message : model->messages()) {
+            QJsonObject messageObj;
+            messageObj["pgn"] = static_cast<qint64>(message.pgn);
+            messageObj["name"] = message.name;
+            messageObj["description"] = message.description;
+            messageObj["priority"] = message.priority;
+            messageObj["length"] = message.length;
+            messageObj["tx_periodicity"] = message.txPeriodicity;
+            messageObj["tx_onChange"] = message.txOnChange;
+
+            QJsonArray signalsArray;
+            for (const auto& signal : message.messageSignals) {
+                QJsonObject signalObj;
+                signalObj["spn"] = signal.spn;
+                signalObj["name"] = signal.name;
+                signalObj["description"] = signal.description;
+                signalObj["start_bit"] = signal.startBit;
+                signalObj["bit_length"] = signal.bitLength;
+                signalObj["is_bigEndian"] = signal.isBigEndian;
+                signalObj["is_twosComplement"] = signal.isTwosComplement;
+                signalObj["factor"] = signal.factor;
+                signalObj["offset"] = signal.offset;
+                signalObj["units"] = signal.units;
+
+                QJsonArray enumerationsArray;
+                for (const auto& enumeration : signal.enumerations) {
+                    QJsonObject enumObj;
+                    enumObj["name"] = enumeration.name;
+                    enumObj["description"] = enumeration.description;
+                    enumObj["value"] = enumeration.value;
+                    enumerationsArray.append(enumObj);
+                }
+                signalObj["enumerations"] = enumerationsArray;
+                signalsArray.append(signalObj);
+            }
+            messageObj["data"] = signalsArray;
+            messagesArray.append(messageObj);
+        }
+
+        // Convert Nodes to JSON
+        for (const auto& node : model->nodes()) {
+            QJsonObject nodeObj;
+            nodeObj["name"] = node.name;
+
+            QJsonArray busesArray;
+            for (const auto& bus : node.networks) {
+                QJsonObject busObj;
+                busObj["name"] = bus.networkName;
+                busObj["source_address"] = bus.sourceAddress;
+
+                QJsonArray txArray;
+                for (const auto& txMessage : bus.tx) {
+                    QJsonObject txObj;
+                    txObj["name"] = txMessage.name;
+                    txArray.append(txObj);
+                }
+                busObj["tx"] = txArray;
+
+                QJsonArray rxArray;
+                for (const auto& rxMessage : bus.rx) {
+                    QJsonObject rxObj;
+                    rxObj["name"] = rxMessage.name;
+                    rxArray.append(rxObj);
+                }
+                busObj["rx"] = rxArray;
+
+                busesArray.append(busObj);
+            }
+            nodeObj["buses"] = busesArray;
+            nodesArray.append(nodeObj);
+        }
+    }
+
+    // Final JSON Document
+    QJsonObject rootObj;
+    rootObj["buses"] = busesArray;
+    rootObj["messages"] = messagesArray;
+    rootObj["nodes"] = nodesArray;
+
+    QJsonDocument doc(rootObj);
+
+    // Write to File
+    QFile file(filePath);
+    if (!file.open(QIODevice::WriteOnly)) {
+        qWarning() << "Could not open file for writing:" << filePath;
+        return;
+    }
+    file.write(doc.toJson(QJsonDocument::Indented));
+    file.close();
+
+    qDebug() << "Data successfully saved to" << filePath;
 }
 
 void MainWindow::filterTreeItems(const QString &filterText) {
@@ -563,7 +675,7 @@ void MainWindow::handleMessageItem(QTreeWidgetItem* item, const QString& name, c
     });
 
     // Connect nameLineEdit to handle name changes
-    connect(nameLineEdit, &QLineEdit::textChanged, this, [this, item](const QString &text) {
+    connect(nameLineEdit, &QLineEdit::textChanged, this, [this, item, model](const QString &text) {
         if (currentMessage && !text.isEmpty() && text != currentMessage->name) {
             // Update the name in the tree item
             item->setText(0, text);
@@ -571,10 +683,31 @@ void MainWindow::handleMessageItem(QTreeWidgetItem* item, const QString& name, c
             // Update all tree items that reference the old name
             QList<QTreeWidgetItem *> items = dbcTree->findItems(currentMessage->name, Qt::MatchExactly | Qt::MatchRecursive);
             for (QTreeWidgetItem *currentItem : items) {
-                if (currentItem->text(0) == currentMessage->name) {
+                if (currentItem->data(0, Qt::UserRole + 1).toString() == model->fileName() &&
+                    currentItem->text(0) == currentMessage->name) {
                     currentItem->setText(0, text);
                 }
             }
+
+
+            // Update all tx and rx references within the same model
+            for (auto& node : model->nodes()) {
+                for (auto& network : node.networks) {
+                    for (auto& txMessage : network.tx) {
+                        if (txMessage.name == currentMessage->name) {
+                            txMessage.name = text;  // Update to new name
+                        }
+                    }
+                    for (auto& rxMessage : network.rx) {
+                        if (rxMessage.name == currentMessage->name) {
+                            rxMessage.name = text;  // Update to new name
+                        }
+                    }
+                }
+            }
+
+
+
             currentMessage->name = text;
         }
     });
