@@ -277,7 +277,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 void MainWindow::addAttributeRow(QTableWidget *table, const QStringList &rowData) {
     int row = table->rowCount();
     table->insertRow(row);  // Insert a new row
-
+    // qDebug() << "Adding row to table: " << rowData; // Debug log for row data
     for (int i = 0; i < rowData.size(); ++i) {
         table->setItem(row, i, new QTableWidgetItem(rowData[i]));  // Add data to the row
     }
@@ -518,6 +518,7 @@ void MainWindow::handleMessageItem(QTreeWidgetItem* item, const QString& name, c
 
     // Retrieve the uniqueKey (which is the message's PGN)
     QString uniqueKey = item->data(0, Qt::UserRole + 2).toString();
+    // qDebug() << "Unique key for message:" << uniqueKey; // Debug log to see the unique key
 
     Message* message = nullptr;
     for (Message& msg : model->messages()) {
@@ -528,6 +529,7 @@ void MainWindow::handleMessageItem(QTreeWidgetItem* item, const QString& name, c
     }
 
     if (!message) {
+        // qWarning() << "Message not found for uniqueKey:" << uniqueKey;
         QMessageBox::warning(this, "Error", "Message not found in the model.");
         return;
     }
@@ -555,6 +557,9 @@ void MainWindow::handleMessageItem(QTreeWidgetItem* item, const QString& name, c
     extendedDataPageCheckBox->setChecked(message->extendedDataPage);
     dataPageCheckBox->setChecked(message->dataPage);
 
+    if (message->messageAttributes.isEmpty()) {
+        qWarning() << "No attributes found for message:" << message->name;
+    }
     // Update attributes table
     messageAttributesTable->setRowCount(0);
     for(const Attribute& attribute : message->messageAttributes) {
