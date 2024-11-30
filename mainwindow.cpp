@@ -22,7 +22,6 @@
 #include <QDir>
 #include <QSettings>
 #include <QFileInfo>
-#include <QJsonDocument>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow), dbcTree(new DbcTree()) {
     // Window Icon (Default)
@@ -51,7 +50,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         qDeleteAll(dbcModels);
         dbcModels.clear();
         updateDbcTree();
-        saveFilePath = NULL;
         clearRightPanel();
     });
 
@@ -79,7 +77,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
             DbcDataModel* newModel = new DbcDataModel();
             newModel->setFileName(fileInfo.fileName());
             if (newModel->loadJson(selectedFile)) {
-                saveFilePath = selectedFile;
                 qDeleteAll(dbcModels);
                 dbcModels.clear();
                 dbcModels.append(newModel);
@@ -139,8 +136,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     fileMenu->addAction(saveAs);
 
     connect(save, &QAction::triggered, this, [this]() {
-        // Default JSON save path
-        QString jsonDirPath = QDir::current().filePath("Saves/");
+        // Define the JSON directory path
+        QString jsonDirPath = "./JSON";
 
         // Ensure the JSON directory exists
         QDir jsonDir;
@@ -148,37 +145,46 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
             jsonDir.mkpath(jsonDirPath);
         }
 
-        // If no previous save, generate a unique default file name (e.g., based on current timestamp)
-        if(saveFilePath.isNull() || saveFilePath.isEmpty()) {
-            QString defaultFileName = QString("DbcData_%1.json").arg(QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss"));
-            saveFilePath = jsonDirPath + QDir::separator() + defaultFileName;
-        }
+        // Generate a unique default file name (e.g., based on current timestamp)
+        QString defaultFileName = QString("DbcData_%1.json")
+                                      .arg(QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss"));
 
-        if (!saveFilePath.isEmpty()) {
-            saveAsJson(saveFilePath);
-        }
+        // Construct the full file path
+        QString filePath = jsonDirPath + QDir::separator() + defaultFileName;
+
+        // TODO: Convert the current list of DbcDataModels into a single JSON
+        // QJsonDocument jsonDoc; // Placeholder for the JSON document
+
+        // TODO: Save the JSON document to the specified file path
+        // Example:
+        // QFile file(filePath);
+        // if (file.open(QIODevice::WriteOnly)) {
+        //     file.write(jsonDoc.toJson());
+        //     file.close();
+        // }
     });
 
     connect(saveAs, &QAction::triggered, this, [this]() {
-        QString defaultPath;
-        if(saveFilePath.isNull() || saveFilePath.isEmpty()) {
-            defaultPath = QDir::current().filePath("JSON/DbcData.json");
-        } else {
-            defaultPath = saveFilePath;
-        }
         // Open a QFileDialog to let the user select the save location and file name
-        QString savePath = QFileDialog::getSaveFileName(
+        QString selectedFilePath = QFileDialog::getSaveFileName(
             this,
-            tr("Save Workspace As"),
-            defaultPath,
-            tr("JSON Files (*.json)")
+            tr("Save DBC Data As"),
+            "./JSON/DbcData.json", // Default file name and directory
+            tr("JSON Files (*.json);;All Files (*)")
             );
 
+        // Check if the user selected a file
+        if (!selectedFilePath.isEmpty()) {
+            // TODO: Convert the current list of DbcDataModels into a single JSON
+            // QJsonDocument jsonDoc; // Placeholder for the JSON document
 
-        // Check if the user selected a file path
-        if (!savePath.isEmpty()) {
-            saveFilePath = savePath;
-            saveAsJson(savePath);
+            // TODO: Save the JSON document to the selected file path
+            // Example:
+            // QFile file(selectedFilePath);
+            // if (file.open(QIODevice::WriteOnly)) {
+            //     file.write(jsonDoc.toJson());
+            //     file.close();
+            // }
         }
     });
 
@@ -286,124 +292,6 @@ void MainWindow::addAttributeRow(QTableWidget *table, const QStringList &rowData
 void MainWindow::updateDbcTree()
 {
     dbcTree->populateTree(dbcModels);
-}
-
-void MainWindow::saveAsJson(const QString& filePath) {
-    QJsonArray busesArray;
-    QJsonArray messagesArray;
-    QJsonArray nodesArray;
-
-    for (const auto& model : dbcModels) {
-        // Convert Networks to JSON
-        for (const auto& network : model->networks()) {
-            QJsonObject networkObj;
-            networkObj["name"] = network.name;
-            networkObj["baud"] = network.baud;
-
-            QJsonArray attributesArray;
-            for (const auto& attribute : network.networkAttributes) {
-                QJsonObject attributeObj;
-                attributeObj["name"] = attribute.name;
-                attributeObj["type"] = attribute.type;
-                attributeObj["value"] = attribute.value;
-                attributesArray.append(attributeObj);
-            }
-            networkObj["networkAttributes"] = attributesArray;
-            busesArray.append(networkObj);
-        }
-
-        // Convert Messages to JSON
-        for (const auto& message : model->messages()) {
-            QJsonObject messageObj;
-            messageObj["pgn"] = static_cast<qint64>(message.pgn);
-            messageObj["name"] = message.name;
-            messageObj["description"] = message.description;
-            messageObj["priority"] = message.priority;
-            messageObj["length"] = message.length;
-            messageObj["tx_periodicity"] = message.txPeriodicity;
-            messageObj["tx_onChange"] = message.txOnChange;
-
-            QJsonArray signalsArray;
-            for (const auto& signal : message.messageSignals) {
-                QJsonObject signalObj;
-                signalObj["spn"] = signal.spn;
-                signalObj["name"] = signal.name;
-                signalObj["description"] = signal.description;
-                signalObj["start_bit"] = signal.startBit;
-                signalObj["bit_length"] = signal.bitLength;
-                signalObj["is_bigEndian"] = signal.isBigEndian;
-                signalObj["is_twosComplement"] = signal.isTwosComplement;
-                signalObj["factor"] = signal.factor;
-                signalObj["offset"] = signal.offset;
-                signalObj["units"] = signal.units;
-
-                QJsonArray enumerationsArray;
-                for (const auto& enumeration : signal.enumerations) {
-                    QJsonObject enumObj;
-                    enumObj["name"] = enumeration.name;
-                    enumObj["description"] = enumeration.description;
-                    enumObj["value"] = enumeration.value;
-                    enumerationsArray.append(enumObj);
-                }
-                signalObj["enumerations"] = enumerationsArray;
-                signalsArray.append(signalObj);
-            }
-            messageObj["data"] = signalsArray;
-            messagesArray.append(messageObj);
-        }
-
-        // Convert Nodes to JSON
-        for (const auto& node : model->nodes()) {
-            QJsonObject nodeObj;
-            nodeObj["name"] = node.name;
-
-            QJsonArray busesArray;
-            for (const auto& bus : node.networks) {
-                QJsonObject busObj;
-                busObj["name"] = bus.networkName;
-                busObj["source_address"] = bus.sourceAddress;
-
-                QJsonArray txArray;
-                for (const auto& txMessage : bus.tx) {
-                    QJsonObject txObj;
-                    txObj["name"] = txMessage.name;
-                    txArray.append(txObj);
-                }
-                busObj["tx"] = txArray;
-
-                QJsonArray rxArray;
-                for (const auto& rxMessage : bus.rx) {
-                    QJsonObject rxObj;
-                    rxObj["name"] = rxMessage.name;
-                    rxArray.append(rxObj);
-                }
-                busObj["rx"] = rxArray;
-
-                busesArray.append(busObj);
-            }
-            nodeObj["buses"] = busesArray;
-            nodesArray.append(nodeObj);
-        }
-    }
-
-    // Final JSON Document
-    QJsonObject rootObj;
-    rootObj["buses"] = busesArray;
-    rootObj["messages"] = messagesArray;
-    rootObj["nodes"] = nodesArray;
-
-    QJsonDocument doc(rootObj);
-
-    // Write to File
-    QFile file(filePath);
-    if (!file.open(QIODevice::WriteOnly)) {
-        qWarning() << "Could not open file for writing:" << filePath;
-        return;
-    }
-    file.write(doc.toJson(QJsonDocument::Indented));
-    file.close();
-
-    qDebug() << "Data successfully saved to" << filePath;
 }
 
 void MainWindow::filterTreeItems(const QString &filterText) {
@@ -675,7 +563,7 @@ void MainWindow::handleMessageItem(QTreeWidgetItem* item, const QString& name, c
     });
 
     // Connect nameLineEdit to handle name changes
-    connect(nameLineEdit, &QLineEdit::textChanged, this, [this, item, model](const QString &text) {
+    connect(nameLineEdit, &QLineEdit::textChanged, this, [this, item](const QString &text) {
         if (currentMessage && !text.isEmpty() && text != currentMessage->name) {
             // Update the name in the tree item
             item->setText(0, text);
@@ -683,31 +571,10 @@ void MainWindow::handleMessageItem(QTreeWidgetItem* item, const QString& name, c
             // Update all tree items that reference the old name
             QList<QTreeWidgetItem *> items = dbcTree->findItems(currentMessage->name, Qt::MatchExactly | Qt::MatchRecursive);
             for (QTreeWidgetItem *currentItem : items) {
-                if (currentItem->data(0, Qt::UserRole + 1).toString() == model->fileName() &&
-                    currentItem->text(0) == currentMessage->name) {
+                if (currentItem->text(0) == currentMessage->name) {
                     currentItem->setText(0, text);
                 }
             }
-
-
-            // Update all tx and rx references within the same model
-            for (auto& node : model->nodes()) {
-                for (auto& network : node.networks) {
-                    for (auto& txMessage : network.tx) {
-                        if (txMessage.name == currentMessage->name) {
-                            txMessage.name = text;  // Update to new name
-                        }
-                    }
-                    for (auto& rxMessage : network.rx) {
-                        if (rxMessage.name == currentMessage->name) {
-                            rxMessage.name = text;  // Update to new name
-                        }
-                    }
-                }
-            }
-
-
-
             currentMessage->name = text;
         }
     });
@@ -811,6 +678,12 @@ void MainWindow::handleSignalItem(QTreeWidgetItem* item, const QString& name, co
     if (!signal) {
         QMessageBox::warning(this, "Error", "Signal not found in the message.");
         return;
+    }
+
+    if (signal->isTwosComplement) {
+        valueTypeComboBox->setCurrentText("Signed");
+    } else {
+        valueTypeComboBox->setCurrentText("Unsigned");
     }
 
     currentSignal = signal;
@@ -928,6 +801,56 @@ void MainWindow::handleSignalItem(QTreeWidgetItem* item, const QString& name, co
     if (rightPanel->indexOf(signalTab) == -1) {
         rightPanel->addTab(signalTab, "Signal");
     }
+
+    //Populate Values When a Signal is Selected
+    for (Signal& sig : message->messageSignals) {
+        if (sig.name == name) {
+            signal = &sig;
+            break;
+        }
+    }
+
+    if (!signal) {
+        QMessageBox::warning(this, "Error", "Signal not found.");
+        return;
+    }
+
+    // Populate min and max fields
+    if (signal->scaledMin.isValid())
+        minValueLineEdit->setText(signal->scaledMin.toString());
+    else
+        minValueLineEdit->setText("N/A");
+
+    if (signal->scaledMax.isValid())
+        maxValueLineEdit->setText(signal->scaledMax.toString());
+    else
+        maxValueLineEdit->setText("N/A");
+
+    connect(minValueLineEdit, &QLineEdit::textChanged, this, [this](const QString& text) {
+        if (currentSignal) {
+            bool ok;
+            double value = text.toDouble(&ok);
+            if (ok) currentSignal->scaledMin = value;
+        }
+    });
+
+    connect(maxValueLineEdit, &QLineEdit::textChanged, this, [this](const QString& text) {
+        if (currentSignal) {
+            bool ok;
+            double value = text.toDouble(&ok);
+            if (ok) currentSignal->scaledMax = value;
+        }
+    });
+
+    connect(valueTypeComboBox, &QComboBox::currentTextChanged, this, [this](const QString &text) {
+        if (currentSignal) {
+            if (text == "Signed") {
+                currentSignal->isTwosComplement = true;
+            } else if (text == "Unsigned") {
+                currentSignal->isTwosComplement = false;
+            }
+        }
+    });
 
     rightPanel->setCurrentWidget(signalTab);
 }
@@ -1224,6 +1147,20 @@ void MainWindow::setupRightPanel()
     enumerationsTable = new QTableWidget;
     signalAttributesTable = new QTableWidget;
 
+    // Inside Signal tab initialization
+    signalFormLayout = new QFormLayout();
+
+    // Add fields for Min and Max
+    QLabel *minValueLabel = new QLabel("Min Value:");
+    minValueLineEdit = new QLineEdit();
+
+
+
+    QLabel *maxValueLabel = new QLabel("Max Value:");
+    maxValueLineEdit = new QLineEdit();
+
+
+
 
     // Set up the Definition Form Layout
     definitionFormLayout->addRow("PGN:", pgnLineEdit);
@@ -1295,6 +1232,8 @@ void MainWindow::setupRightPanel()
     signalFormLayout->addRow("Factor:", factorSpinBox);
     signalFormLayout->addRow("Offset:", offsetSpinBox);
     signalFormLayout->addRow("Units:", unitsLineEdit);
+    signalFormLayout->addRow(minValueLabel, minValueLineEdit);
+    signalFormLayout->addRow(maxValueLabel, maxValueLineEdit);
     signalFormLayout->addRow(new QLabel("Signal Attributes:"));
     signalAttributesTable->setColumnCount(3);
     signalAttributesTable->setHorizontalHeaderLabels({"Name", "Type", "Value"});
@@ -1305,6 +1244,7 @@ void MainWindow::setupRightPanel()
     enumerationsTable->setHorizontalHeaderLabels({"Name", "Value", "Description"});
     enumerationsTable->horizontalHeader()->setStretchLastSection(true);
     signalFormLayout->addRow(enumerationsTable);
+
 
     signalTab->setLayout(signalFormLayout);
 
@@ -1324,6 +1264,22 @@ void MainWindow::setupRightPanel()
     rightPanel->removeTab(rightPanel->indexOf(transmittersTab));
     rightPanel->removeTab(rightPanel->indexOf(receiversTab));
     rightPanel->removeTab(rightPanel->indexOf(layoutTab));
+
+    // Create a combo box for value type
+    QLabel *valueTypeLabel = new QLabel("Value Type:");
+    valueTypeComboBox = new QComboBox();
+    valueTypeComboBox->addItem("Signed");
+    valueTypeComboBox->addItem("Unsigned");
+
+    calculateMinMaxButton = new QPushButton("Calculate Min/Max");
+    signalFormLayout->addRow(calculateMinMaxButton);
+
+    connect(calculateMinMaxButton, &QPushButton::clicked, this, &MainWindow::calculateSignalMinMax);
+
+
+
+    // Add it to the layout
+    signalFormLayout->addRow(valueTypeLabel, valueTypeComboBox);
 }
 
 
@@ -1465,6 +1421,33 @@ void MainWindow::displayBitLayout(Message& message , int selectedMultiplexer = -
         // Increment color index for the next signal
         colorsIndex++;
     }
+}
+
+void MainWindow::calculateSignalMinMax() {
+    if (!currentSignal) {
+        QMessageBox::warning(this, "No Signal Selected", "Please select a signal to calculate min and max values.");
+        return;
+    }
+
+    // Calculate min and max based on signal properties
+    double minValue = currentSignal->factor * 0 + currentSignal->offset; // Minimum raw value (0)
+    double maxValue = currentSignal->factor * ((1LL << currentSignal->bitLength) - 1) + currentSignal->offset; // Maximum raw value
+
+    if (currentSignal->isTwosComplement) {
+        // Adjust for signed values
+        double rawMax = (1LL << (currentSignal->bitLength - 1)) - 1;
+        double rawMin = -(1LL << (currentSignal->bitLength - 1));
+        minValue = rawMin * currentSignal->factor + currentSignal->offset;
+        maxValue = rawMax * currentSignal->factor + currentSignal->offset;
+    }
+
+    // Update UI fields
+    minValueLineEdit->setText(QString::number(minValue));
+    maxValueLineEdit->setText(QString::number(maxValue));
+
+    // Optionally update the Signal object
+    currentSignal->scaledMin = minValue;
+    currentSignal->scaledMax = maxValue;
 }
 
 

@@ -147,6 +147,8 @@ bool DbcDataModel::importDBC(const QString& filePath) {
             signal.scaledMin = match.captured(9).toDouble();
             signal.scaledMax = match.captured(10).toDouble();
             signal.units = match.captured(11).trimmed();
+            signal.scaledMin = match.captured(9).toDouble();
+            signal.scaledMax = match.captured(10).toDouble();
             QString receivers = match.captured(12).trimmed();
             QStringList receiverNames = receivers.split(',', Qt::SkipEmptyParts);
 
@@ -401,6 +403,11 @@ void DbcDataModel::parseJson(const QJsonObject& jsonObject) {
             signal.scaledMin = signalObject.value("scaled_min").toVariant();
             signal.scaledMax = signalObject.value("scaled_max").toVariant();
             signal.scaledDefault = signalObject.value("scaled_default").toVariant();
+
+            //Update JSON Parsing and Serialization
+            signal.isTwosComplement = signalObject.value("isTwosComplement").toBool();
+            signalObject["isTwosComplement"] = signal.isTwosComplement;
+
 
             // If scaled_default is null, default to scaled_min
             if (signal.scaledDefault.isNull()) {
