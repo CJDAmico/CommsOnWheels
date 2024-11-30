@@ -36,7 +36,7 @@ private slots:
     void handleNetworkItem(QTreeWidgetItem* item, const QString& name, const QString& modelName);
     void handleNodeItem(QTreeWidgetItem* item, const QString& name, const QString& modelName);
     void filterTreeItems(const QString &filterText);
-    void calculateSignalMinMax(); // Slot for Calculate Min/Max button
+    void calculateSignalMinMax();
 
 private:
     Ui::MainWindow *ui;
@@ -45,9 +45,13 @@ private:
 
     void addAttributeRow(QTableWidget *table, const QStringList &rowData);
     void updateDbcTree();
+    void saveAsJson(const QString& filePath);
     void setupRightPanel();
     void clearRightPanel();
     void displayBitLayout(Message &message, int selectedMultiplexer);
+
+    // Current File
+    QString saveFilePath;
 
     // Left and Right Tab Splitter
     QSplitter *splitter;
@@ -134,6 +138,10 @@ private:
     QLineEdit *unitsLineEdit;
     QTableWidget *enumerationsTable;
     QTableWidget *signalAttributesTable;
+    QLineEdit *minValueLineEdit;
+    QLineEdit *maxValueLineEdit;
+    QComboBox *valueTypeComboBox;
+    QPushButton *calculateMinMaxButton;
 
     // UI Selections
     Network *currentNetwork;
@@ -141,13 +149,5 @@ private:
     Message *currentMessage;
     Signal *currentSignal;
     QTreeWidgetItem* currentTreeItem;
-
-    //Min Max calculation
-    QLineEdit *minValueLineEdit;  // To display signal's minimum value
-    QLineEdit *maxValueLineEdit;  // To display signal's maximum value
-
-    QComboBox *valueTypeComboBox;  // To display and set signal value type
-
-    QPushButton *calculateMinMaxButton;  // Button to calculate min and max
 };
 #endif // MAINWINDOW_H
