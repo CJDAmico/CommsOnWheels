@@ -300,6 +300,7 @@ void MainWindow::saveAsJson(const QString& filePath) {
             networkObj["name"] = network.name;
             networkObj["baud"] = network.baud;
 
+            // Save Network Attributes
             QJsonArray attributesArray;
             for (const auto& attribute : network.networkAttributes) {
                 QJsonObject attributeObj;
@@ -309,6 +310,7 @@ void MainWindow::saveAsJson(const QString& filePath) {
                 attributesArray.append(attributeObj);
             }
             networkObj["networkAttributes"] = attributesArray;
+
             busesArray.append(networkObj);
         }
 
@@ -323,6 +325,17 @@ void MainWindow::saveAsJson(const QString& filePath) {
             messageObj["tx_periodicity"] = message.txPeriodicity;
             messageObj["tx_onChange"] = message.txOnChange;
 
+            // Save Message Attributes
+            QJsonArray messageAttributesArray;
+            for (const auto& attribute : message.messageAttributes) {
+                QJsonObject attributeObj;
+                attributeObj["name"] = attribute.name;
+                attributeObj["type"] = attribute.type;
+                attributeObj["value"] = attribute.value;
+                messageAttributesArray.append(attributeObj);
+            }
+            messageObj["messageAttributes"] = messageAttributesArray;
+
             QJsonArray signalsArray;
             for (const auto& signal : message.messageSignals) {
                 QJsonObject signalObj;
@@ -336,6 +349,17 @@ void MainWindow::saveAsJson(const QString& filePath) {
                 signalObj["factor"] = signal.factor;
                 signalObj["offset"] = signal.offset;
                 signalObj["units"] = signal.units;
+
+                // Save Signal Attributes
+                QJsonArray signalAttributesArray;
+                for (const auto& attribute : signal.signalAttributes) {
+                    QJsonObject attributeObj;
+                    attributeObj["name"] = attribute.name;
+                    attributeObj["type"] = attribute.type;
+                    attributeObj["value"] = attribute.value;
+                    signalAttributesArray.append(attributeObj);
+                }
+                signalObj["signalAttributes"] = signalAttributesArray;
 
                 QJsonArray enumerationsArray;
                 for (const auto& enumeration : signal.enumerations) {
@@ -356,6 +380,17 @@ void MainWindow::saveAsJson(const QString& filePath) {
         for (const auto& node : model->nodes()) {
             QJsonObject nodeObj;
             nodeObj["name"] = node.name;
+
+            // Save Node Attributes
+            QJsonArray nodeAttributesArray;
+            for (const auto& attribute : node.nodeAttributes) {
+                QJsonObject attributeObj;
+                attributeObj["name"] = attribute.name;
+                attributeObj["type"] = attribute.type;
+                attributeObj["value"] = attribute.value;
+                nodeAttributesArray.append(attributeObj);
+            }
+            nodeObj["nodeAttributes"] = nodeAttributesArray;
 
             QJsonArray busesArray;
             for (const auto& bus : node.networks) {
@@ -405,6 +440,7 @@ void MainWindow::saveAsJson(const QString& filePath) {
 
     qDebug() << "Data successfully saved to" << filePath;
 }
+
 
 void MainWindow::filterTreeItems(const QString &filterText) {
     QTreeWidgetItemIterator it(dbcTree);
@@ -565,6 +601,8 @@ void MainWindow::handleMessageItem(QTreeWidgetItem* item, const QString& name, c
     for(const Attribute& attribute : message->messageAttributes) {
         addAttributeRow(messageAttributesTable, { attribute.name, attribute.type, attribute.value });
     }
+    connect(messageAttributesTable, &QTableWidget::cellChanged, this, &MainWindow::onMessageAttributesTableCellChanged);
+
 
     // Update signals list
     signalsList->clear();
@@ -640,6 +678,7 @@ void MainWindow::handleMessageItem(QTreeWidgetItem* item, const QString& name, c
             }
         }
     }
+
 
     // Disconnect any existing connections to prevent multiple triggers
     disconnect(multiplexerComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
@@ -760,6 +799,66 @@ void MainWindow::handleMessageItem(QTreeWidgetItem* item, const QString& name, c
     rightPanel->setCurrentWidget(definitionTab);
 }
 
+void MainWindow::addMessageAttribute() {
+    if (!currentMessage) return;
+
+    Attribute newAttribute;
+    newAttribute.name = "";
+    newAttribute.type = "";
+    newAttribute.value = "";
+
+    currentMessage->messageAttributes.append(newAttribute);
+
+    int row = messageAttributesTable->rowCount();
+    messageAttributesTable->insertRow(row);
+    messageAttributesTable->setItem(row, 0, new QTableWidgetItem(""));
+    messageAttributesTable->setItem(row, 1, new QTableWidgetItem(""));
+    messageAttributesTable->setItem(row, 2, new QTableWidgetItem(""));
+}
+
+void MainWindow::removeMessageAttribute() {
+    if (!currentMessage) return;
+
+    QList<QTableWidgetSelectionRange> ranges = messageAttributesTable->selectedRanges();
+    if (ranges.isEmpty()) return;
+
+    for (int i = ranges.size() - 1; i >= 0; --i) {
+        int row = ranges.at(i).topRow();
+        if (row >= 0 && row < currentMessage->messageAttributes.size()) {
+            currentMessage->messageAttributes.removeAt(row);
+            messageAttributesTable->removeRow(row);
+        }
+    }
+}
+
+void MainWindow::onMessageAttributesTableCellChanged(int row, int column) {
+    if (!currentMessage) return;
+    if (row < 0 || row >= messageAttributesTable->rowCount()) return;
+
+    QString value = messageAttributesTable->item(row, column)->text();
+
+    if (row >= currentMessage->messageAttributes.size()) {
+        while (currentMessage->messageAttributes.size() <= row) {
+            Attribute newAttribute;
+            currentMessage->messageAttributes.append(newAttribute);
+        }
+    }
+
+    Attribute &attr = currentMessage->messageAttributes[row];
+    switch (column) {
+    case 0:
+        attr.name = value;
+        break;
+    case 1:
+        attr.type = value;
+        break;
+    case 2:
+        attr.value = value;
+        break;
+    }
+}
+
+
 
 void MainWindow::handleSignalItem(QTreeWidgetItem* item, const QString& name, const QString& modelName)
 {
@@ -837,6 +936,7 @@ void MainWindow::handleSignalItem(QTreeWidgetItem* item, const QString& name, co
     for(const Attribute& attribute : signal->signalAttributes) {
         addAttributeRow(signalAttributesTable, { attribute.name, attribute.type, attribute.value });
     }
+    connect(signalAttributesTable, &QTableWidget::cellChanged, this, &MainWindow::onSignalAttributesTableCellChanged);
 
     // Update enumerations table
     enumerationsTable->setRowCount(0);
@@ -937,6 +1037,66 @@ void MainWindow::handleSignalItem(QTreeWidgetItem* item, const QString& name, co
     rightPanel->setCurrentWidget(signalTab);
 }
 
+void MainWindow::addSignalAttribute() {
+    if (!currentSignal) return;
+
+    Attribute newAttribute;
+    newAttribute.name = "";
+    newAttribute.type = "";
+    newAttribute.value = "";
+
+    currentSignal->signalAttributes.append(newAttribute);
+
+    int row = signalAttributesTable->rowCount();
+    signalAttributesTable->insertRow(row);
+    signalAttributesTable->setItem(row, 0, new QTableWidgetItem(""));
+    signalAttributesTable->setItem(row, 1, new QTableWidgetItem(""));
+    signalAttributesTable->setItem(row, 2, new QTableWidgetItem(""));
+}
+
+void MainWindow::removeSignalAttribute() {
+    if (!currentSignal) return;
+
+    QList<QTableWidgetSelectionRange> ranges = signalAttributesTable->selectedRanges();
+    if (ranges.isEmpty()) return;
+
+    for (int i = ranges.size() - 1; i >= 0; --i) {
+        int row = ranges.at(i).topRow();
+        if (row >= 0 && row < currentSignal->signalAttributes.size()) {
+            currentSignal->signalAttributes.removeAt(row);
+            signalAttributesTable->removeRow(row);
+        }
+    }
+}
+
+void MainWindow::onSignalAttributesTableCellChanged(int row, int column) {
+    if (!currentSignal) return;
+    if (row < 0 || row >= signalAttributesTable->rowCount()) return;
+
+    QString value = signalAttributesTable->item(row, column)->text();
+
+    if (row >= currentSignal->signalAttributes.size()) {
+        while (currentSignal->signalAttributes.size() <= row) {
+            Attribute newAttribute;
+            currentSignal->signalAttributes.append(newAttribute);
+        }
+    }
+
+    Attribute &attr = currentSignal->signalAttributes[row];
+    switch (column) {
+    case 0:
+        attr.name = value;
+        break;
+    case 1:
+        attr.type = value;
+        break;
+    case 2:
+        attr.value = value;
+        break;
+    }
+}
+
+
 
 void MainWindow::handleNetworkItem(QTreeWidgetItem* item, const QString& name, const QString& modelName)
 {
@@ -991,6 +1151,7 @@ void MainWindow::handleNetworkItem(QTreeWidgetItem* item, const QString& name, c
     for(const Attribute& attribute : network->networkAttributes) {
         addAttributeRow(networkAttributesTable, { attribute.name, attribute.type, attribute.value });
     }
+    connect(networkAttributesTable, &QTableWidget::cellChanged, this, &MainWindow::onNetworkAttributesTableCellChanged);
 
     // Connect Network Name to handle name changes
     connect(networkNameLineEdit, &QLineEdit::textChanged, this, [this, item](const QString &text) {
@@ -1056,6 +1217,76 @@ void MainWindow::handleNetworkItem(QTreeWidgetItem* item, const QString& name, c
     rightPanel->setCurrentWidget(networkTab);
 }
 
+void MainWindow::addNetworkAttribute() {
+    if (!currentNetwork) return;
+
+    // Create a new empty Attribute
+    Attribute newAttribute;
+    newAttribute.name = "";
+    newAttribute.type = "";
+    newAttribute.value = "";
+
+    // Add to data model
+    currentNetwork->networkAttributes.append(newAttribute);
+
+    // Add a new row to the table
+    int row = networkAttributesTable->rowCount();
+    networkAttributesTable->insertRow(row);
+
+    // Allow user to edit the cells
+    networkAttributesTable->setItem(row, 0, new QTableWidgetItem(""));
+    networkAttributesTable->setItem(row, 1, new QTableWidgetItem(""));
+    networkAttributesTable->setItem(row, 2, new QTableWidgetItem(""));
+}
+
+void MainWindow::removeNetworkAttribute() {
+    if (!currentNetwork) return;
+
+    // Get the selected rows
+    QList<QTableWidgetSelectionRange> ranges = networkAttributesTable->selectedRanges();
+    if (ranges.isEmpty()) return;
+
+    // Remove from data model and table, starting from the last selected row
+    for (int i = ranges.size() - 1; i >= 0; --i) {
+        int row = ranges.at(i).topRow();
+        if (row >= 0 && row < currentNetwork->networkAttributes.size()) {
+            currentNetwork->networkAttributes.removeAt(row);
+            networkAttributesTable->removeRow(row);
+        }
+    }
+}
+
+void MainWindow::onNetworkAttributesTableCellChanged(int row, int column) {
+    if (!currentNetwork) return;
+    if (row < 0 || row >= networkAttributesTable->rowCount()) return;
+
+    QString value = networkAttributesTable->item(row, column)->text();
+
+    // Ensure the attribute exists in the data model
+    if (row >= currentNetwork->networkAttributes.size()) {
+        // Add empty attributes if needed
+        while (currentNetwork->networkAttributes.size() <= row) {
+            Attribute newAttribute;
+            currentNetwork->networkAttributes.append(newAttribute);
+        }
+    }
+
+    Attribute &attr = currentNetwork->networkAttributes[row];
+    switch (column) {
+    case 0:
+        attr.name = value;
+        break;
+    case 1:
+        attr.type = value;
+        break;
+    case 2:
+        attr.value = value;
+        break;
+    }
+}
+
+
+
 
 void MainWindow::handleNodeItem(QTreeWidgetItem* item, const QString& name, const QString& modelName)
 {
@@ -1109,6 +1340,7 @@ void MainWindow::handleNodeItem(QTreeWidgetItem* item, const QString& name, cons
     for(const Attribute& attribute : node->nodeAttributes) {
         addAttributeRow(nodeAttributesTable, { attribute.name, attribute.type, attribute.value });
     }
+    connect(nodeAttributesTable, &QTableWidget::cellChanged, this, &MainWindow::onNodeAttributesTableCellChanged);
 
     // Connect Node Name to handle name changes
     connect(nodeNameLineEdit, &QLineEdit::textChanged, this, [this, item](const QString &text) {
@@ -1155,6 +1387,67 @@ void MainWindow::handleNodeItem(QTreeWidgetItem* item, const QString& name, cons
     rightPanel->setCurrentWidget(nodeTab);
 }
 
+void MainWindow::addNodeAttribute() {
+    if (!currentNode) return;
+
+    Attribute newAttribute;
+    newAttribute.name = "";
+    newAttribute.type = "";
+    newAttribute.value = "";
+
+    currentNode->nodeAttributes.append(newAttribute);
+
+    int row = nodeAttributesTable->rowCount();
+    nodeAttributesTable->insertRow(row);
+    nodeAttributesTable->setItem(row, 0, new QTableWidgetItem(""));
+    nodeAttributesTable->setItem(row, 1, new QTableWidgetItem(""));
+    nodeAttributesTable->setItem(row, 2, new QTableWidgetItem(""));
+}
+
+void MainWindow::removeNodeAttribute() {
+    if (!currentNode) return;
+
+    QList<QTableWidgetSelectionRange> ranges = nodeAttributesTable->selectedRanges();
+    if (ranges.isEmpty()) return;
+
+    for (int i = ranges.size() - 1; i >= 0; --i) {
+        int row = ranges.at(i).topRow();
+        if (row >= 0 && row < currentNode->nodeAttributes.size()) {
+            currentNode->nodeAttributes.removeAt(row);
+            nodeAttributesTable->removeRow(row);
+        }
+    }
+}
+
+void MainWindow::onNodeAttributesTableCellChanged(int row, int column) {
+    if (!currentNode) return;
+    if (row < 0 || row >= nodeAttributesTable->rowCount()) return;
+
+    QString value = nodeAttributesTable->item(row, column)->text();
+
+    if (row >= currentNode->nodeAttributes.size()) {
+        while (currentNode->nodeAttributes.size() <= row) {
+            Attribute newAttribute;
+            currentNode->nodeAttributes.append(newAttribute);
+        }
+    }
+
+    Attribute &attr = currentNode->nodeAttributes[row];
+    switch (column) {
+    case 0:
+        attr.name = value;
+        break;
+    case 1:
+        attr.type = value;
+        break;
+    case 2:
+        attr.value = value;
+        break;
+    }
+}
+
+
+
 void MainWindow::setupRightPanel()
 {
     // Initialize widgets
@@ -1180,6 +1473,13 @@ void MainWindow::setupRightPanel()
     dataPageCheckBox = new QCheckBox;
     messageAttributesTable = new QTableWidget;
     signalsList = new QListWidget;
+    addMessageAttributeButton = new QPushButton("Add Attribute");
+    removeMessageAttributeButton = new QPushButton("Remove Attribute");
+    QHBoxLayout *messageAttributeButtonsLayout = new QHBoxLayout;
+    messageAttributeButtonsLayout->addWidget(addMessageAttributeButton);
+    messageAttributeButtonsLayout->addWidget(removeMessageAttributeButton);
+    connect(addMessageAttributeButton, &QPushButton::clicked, this, &MainWindow::addMessageAttribute);
+    connect(removeMessageAttributeButton, &QPushButton::clicked, this, &MainWindow::removeMessageAttribute);
 
     // Transmitters
     transmittersTab = new QWidget;
@@ -1199,11 +1499,18 @@ void MainWindow::setupRightPanel()
     multiplexerComboBox = new QComboBox;
 
     //--------Network--------------------
-        networkTab = new QWidget;
+    networkTab = new QWidget;
     networkFormLayout = new QFormLayout;
     networkNameLineEdit = new QLineEdit;
     baudRateLineEdit = new QLineEdit;
     networkAttributesTable = new QTableWidget;
+    addNetworkAttributeButton = new QPushButton("Add Attribute");
+    removeNetworkAttributeButton = new QPushButton("Remove Attribute");
+    QHBoxLayout *networkAttributeButtonsLayout = new QHBoxLayout;
+    networkAttributeButtonsLayout->addWidget(addNetworkAttributeButton);
+    networkAttributeButtonsLayout->addWidget(removeNetworkAttributeButton);
+    connect(addNetworkAttributeButton, &QPushButton::clicked, this, &MainWindow::addNetworkAttribute);
+    connect(removeNetworkAttributeButton, &QPushButton::clicked, this, &MainWindow::removeNetworkAttribute);
 
     //--------Node--------------------
     nodeTab = new QWidget;
@@ -1211,7 +1518,13 @@ void MainWindow::setupRightPanel()
     nodeNameLineEdit = new QLineEdit;
     nodeAddressTable = new QTableWidget;
     nodeAttributesTable = new QTableWidget;
-
+    addNodeAttributeButton = new QPushButton("Add Attribute");
+    removeNodeAttributeButton = new QPushButton("Remove Attribute");
+    QHBoxLayout *nodeAttributeButtonsLayout = new QHBoxLayout;
+    nodeAttributeButtonsLayout->addWidget(addNodeAttributeButton);
+    nodeAttributeButtonsLayout->addWidget(removeNodeAttributeButton);
+    connect(addNodeAttributeButton, &QPushButton::clicked, this, &MainWindow::addNodeAttribute);
+    connect(removeNodeAttributeButton, &QPushButton::clicked, this, &MainWindow::removeNodeAttribute);
 
     //--------Signal--------------------
     signalTab = new QWidget;
@@ -1228,7 +1541,13 @@ void MainWindow::setupRightPanel()
     unitsLineEdit = new QLineEdit;
     enumerationsTable = new QTableWidget;
     signalAttributesTable = new QTableWidget;
-
+    addSignalAttributeButton = new QPushButton("Add Attribute");
+    removeSignalAttributeButton = new QPushButton("Remove Attribute");
+    QHBoxLayout *signalAttributeButtonsLayout = new QHBoxLayout;
+    signalAttributeButtonsLayout->addWidget(addSignalAttributeButton);
+    signalAttributeButtonsLayout->addWidget(removeSignalAttributeButton);
+    connect(addSignalAttributeButton, &QPushButton::clicked, this, &MainWindow::addSignalAttribute);
+    connect(removeSignalAttributeButton, &QPushButton::clicked, this, &MainWindow::removeSignalAttribute);
 
     // Set up the Definition Form Layout
     definitionFormLayout->addRow("PGN:", pgnLineEdit);
@@ -1242,6 +1561,7 @@ void MainWindow::setupRightPanel()
     messageAttributesTable->setColumnCount(3);
     messageAttributesTable->setHorizontalHeaderLabels({"Name", "Type", "Value"});
     messageAttributesTable->horizontalHeader()->setStretchLastSection(true);
+    definitionFormLayout->addRow(messageAttributeButtonsLayout);
     definitionFormLayout->addRow(messageAttributesTable);
     definitionFormLayout->addRow(new QLabel("Signals:"));
     definitionFormLayout->addRow(signalsList);
@@ -1273,6 +1593,7 @@ void MainWindow::setupRightPanel()
     networkAttributesTable->setColumnCount(3);
     networkAttributesTable->setHorizontalHeaderLabels({"Name", "Type", "Value"});
     networkAttributesTable->horizontalHeader()->setStretchLastSection(true);
+    networkFormLayout->addRow(networkAttributeButtonsLayout);
     networkFormLayout->addRow(networkAttributesTable);
     networkTab->setLayout(networkFormLayout);
 
@@ -1286,6 +1607,7 @@ void MainWindow::setupRightPanel()
     nodeAttributesTable->setColumnCount(3);
     nodeAttributesTable->setHorizontalHeaderLabels({"Name", "Type", "Value"});
     nodeAttributesTable->horizontalHeader()->setStretchLastSection(true);
+    nodeFormLayout->addRow(nodeAttributeButtonsLayout);
     nodeFormLayout->addRow(nodeAttributesTable);
     nodeTab->setLayout(nodeFormLayout);
 
@@ -1304,6 +1626,7 @@ void MainWindow::setupRightPanel()
     signalAttributesTable->setColumnCount(3);
     signalAttributesTable->setHorizontalHeaderLabels({"Name", "Type", "Value"});
     signalAttributesTable->horizontalHeader()->setStretchLastSection(true);
+    signalFormLayout->addRow(signalAttributeButtonsLayout);
     signalFormLayout->addRow(signalAttributesTable);
     signalFormLayout->addRow(new QLabel("Enumerations:"));
     enumerationsTable->setColumnCount(3);
@@ -1337,9 +1660,11 @@ void MainWindow::clearRightPanel()
     // Disconnect Network UI fields
     disconnect(networkNameLineEdit, &QLineEdit::textChanged, nullptr, nullptr);
     disconnect(baudRateLineEdit, &QLineEdit::textChanged, nullptr, nullptr);
+    disconnect(networkAttributesTable, &QTableWidget::cellChanged, this, &MainWindow::onNetworkAttributesTableCellChanged);
 
     // Disconnect Node UI fields
     disconnect(nodeNameLineEdit, &QLineEdit::textChanged, nullptr, nullptr);
+    disconnect(nodeAttributesTable, &QTableWidget::cellChanged, this, &MainWindow::onNodeAttributesTableCellChanged);
 
     // Disconnect Message UI fields
     disconnect(pgnLineEdit, &QLineEdit::textChanged, this, nullptr);
@@ -1350,6 +1675,7 @@ void MainWindow::clearRightPanel()
     disconnect(extendedDataPageCheckBox, &QCheckBox::toggled, this, nullptr);
     disconnect(dataPageCheckBox, &QCheckBox::toggled, this, nullptr);
     disconnect(signalsList, &QListWidget::itemDoubleClicked, this, nullptr);
+    disconnect(messageAttributesTable, &QTableWidget::cellChanged, this, &MainWindow::onMessageAttributesTableCellChanged);
 
     // Disconnect Signal UI fields
     disconnect(spnSpinBox, QOverload<int>::of(&QSpinBox::valueChanged), nullptr, nullptr);
@@ -1362,7 +1688,7 @@ void MainWindow::clearRightPanel()
     disconnect(factorSpinBox, QOverload<double>::of(&QDoubleSpinBox::valueChanged), nullptr, nullptr);
     disconnect(offsetSpinBox, QOverload<double>::of(&QDoubleSpinBox::valueChanged), nullptr, nullptr);
     disconnect(unitsLineEdit, &QLineEdit::textChanged, nullptr, nullptr);
-
+    disconnect(signalAttributesTable, &QTableWidget::cellChanged, this, &MainWindow::onSignalAttributesTableCellChanged);
 
     // Remove all tabs
     while (rightPanel->count() > 0) {

@@ -407,6 +407,18 @@ void DbcDataModel::parseJson(const QJsonObject& jsonObject) {
         Network network;
         network.name = busObject.value("name").toString();
         network.baud = busObject.value("baud").toString();
+
+        // Parse Network Attributes
+        QJsonArray attributesArray = busObject.value("networkAttributes").toArray();
+        for (const QJsonValue& attrValue : attributesArray) {
+            QJsonObject attrObject = attrValue.toObject();
+            Attribute attribute;
+            attribute.name = attrObject.value("name").toString();
+            attribute.type = attrObject.value("type").toString();
+            attribute.value = attrObject.value("value").toString();
+            network.networkAttributes.append(attribute);
+        }
+
         m_networks.append(network);
     }
 
@@ -428,6 +440,17 @@ void DbcDataModel::parseJson(const QJsonObject& jsonObject) {
         message.txPeriodicity = messageObject.value("tx_periodicity").toInt(0);
         message.txOnChange = messageObject.value("tx_onChange").toBool(false);
         message.multiplexValue = -1; // Always defaults to -1
+
+        // Parse Message Attributes
+        QJsonArray messageAttributesArray = messageObject.value("messageAttributes").toArray();
+        for (const QJsonValue& attrValue : messageAttributesArray) {
+            QJsonObject attrObject = attrValue.toObject();
+            Attribute attribute;
+            attribute.name = attrObject.value("name").toString();
+            attribute.type = attrObject.value("type").toString();
+            attribute.value = attrObject.value("value").toString();
+            message.messageAttributes.append(attribute);
+        }
 
         // Parse signals
         QJsonArray dataArray = messageObject.value("data").toArray();
@@ -455,6 +478,17 @@ void DbcDataModel::parseJson(const QJsonObject& jsonObject) {
             // If scaled_default is null, default to scaled_min
             if (signal.scaledDefault.isNull()) {
                 signal.scaledDefault = signal.scaledMin;
+            }
+
+            // Parse Signal Attributes
+            QJsonArray signalAttributesArray = signalObject.value("signalAttributes").toArray();
+            for (const QJsonValue& attrValue : signalAttributesArray) {
+                QJsonObject attrObject = attrValue.toObject();
+                Attribute attribute;
+                attribute.name = attrObject.value("name").toString();
+                attribute.type = attrObject.value("type").toString();
+                attribute.value = attrObject.value("value").toString();
+                signal.signalAttributes.append(attribute);
             }
 
             // Parse enumerations
@@ -490,6 +524,17 @@ void DbcDataModel::parseJson(const QJsonObject& jsonObject) {
         QJsonObject nodeObject = value.toObject();
         Node node;
         node.name = nodeObject.value("name").toString();
+
+        // Parse Node Attributes
+        QJsonArray nodeAttributesArray = nodeObject.value("nodeAttributes").toArray();
+        for (const QJsonValue& attrValue : nodeAttributesArray) {
+            QJsonObject attrObject = attrValue.toObject();
+            Attribute attribute;
+            attribute.name = attrObject.value("name").toString();
+            attribute.type = attrObject.value("type").toString();
+            attribute.value = attrObject.value("value").toString();
+            node.nodeAttributes.append(attribute);
+        }
 
         // Associate Nodes with their Networks (buses)
         QJsonArray nodeNetworksArray = nodeObject.value("buses").toArray();
@@ -543,6 +588,7 @@ void DbcDataModel::parseJson(const QJsonObject& jsonObject) {
         return a.name.toLower() < b.name.toLower();
     });
 }
+
 
 
 

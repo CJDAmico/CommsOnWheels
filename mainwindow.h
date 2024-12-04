@@ -12,6 +12,7 @@
 #include <QSplitter>
 #include <QLineEdit>
 #include <QComboBox>
+#include <QPushButton>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -35,6 +36,20 @@ private slots:
     void handleNetworkItem(QTreeWidgetItem* item, const QString& name, const QString& modelName);
     void handleNodeItem(QTreeWidgetItem* item, const QString& name, const QString& modelName);
     void filterTreeItems(const QString &filterText);
+    // Handle adding and removing to attribute tables
+    void addNetworkAttribute();
+    void removeNetworkAttribute();
+    void addNodeAttribute();
+    void removeNodeAttribute();
+    void addMessageAttribute();
+    void removeMessageAttribute();
+    void addSignalAttribute();
+    void removeSignalAttribute();
+    // Handle changing attribute tables
+    void onNetworkAttributesTableCellChanged(int row, int column);
+    void onNodeAttributesTableCellChanged(int row, int column);
+    void onMessageAttributesTableCellChanged(int row, int column);
+    void onSignalAttributesTableCellChanged(int row, int column);
 
 private:
     Ui::MainWindow *ui;
@@ -65,18 +80,6 @@ private:
     QWidget *nodeTab;
     QWidget *signalTab;
     QWidget *layoutTab;
-
-    // Widgets for Definition Tab (used for Message)
-    QFormLayout *definitionFormLayout;
-    QLineEdit *pgnLineEdit;
-    QLineEdit *nameLineEdit;
-    QLineEdit *descLineEdit;
-    QSpinBox *prioritySpinBox;
-    QSpinBox *lengthSpinBox;
-    QCheckBox *extendedDataPageCheckBox;
-    QCheckBox *dataPageCheckBox;
-    QTableWidget *messageAttributesTable;
-    QListWidget *signalsList;
 
     // Widgets for transmitters and receivers tabs
     QFormLayout *transmittersFormLayout;
@@ -115,12 +118,30 @@ private:
     QLineEdit *networkNameLineEdit;
     QLineEdit *baudRateLineEdit;
     QTableWidget *networkAttributesTable;
+    QPushButton *addNetworkAttributeButton;
+    QPushButton *removeNetworkAttributeButton;
 
     // Widgets for node Tab
     QFormLayout* nodeFormLayout;
     QLineEdit* nodeNameLineEdit;
     QTableWidget *nodeAddressTable;
     QTableWidget *nodeAttributesTable;
+    QPushButton *addNodeAttributeButton;
+    QPushButton *removeNodeAttributeButton;
+
+    // Widgets for Definition Tab (Message Tab)
+    QFormLayout *definitionFormLayout;
+    QLineEdit *pgnLineEdit;
+    QLineEdit *nameLineEdit;
+    QLineEdit *descLineEdit;
+    QSpinBox *prioritySpinBox;
+    QSpinBox *lengthSpinBox;
+    QCheckBox *extendedDataPageCheckBox;
+    QCheckBox *dataPageCheckBox;
+    QTableWidget *messageAttributesTable;
+    QListWidget *signalsList;
+    QPushButton *addMessageAttributeButton;
+    QPushButton *removeMessageAttributeButton;
 
     // Widgets for Signal Tab
     QFormLayout *signalFormLayout;
@@ -136,6 +157,8 @@ private:
     QLineEdit *unitsLineEdit;
     QTableWidget *enumerationsTable;
     QTableWidget *signalAttributesTable;
+    QPushButton *addSignalAttributeButton;
+    QPushButton *removeSignalAttributeButton;
 
     // UI Selections
     Network *currentNetwork;
