@@ -51,7 +51,7 @@ bool DbcDataModel::importDBC(const QString& filePath) {
     QRegularExpression reAttributeDefDef("^BA_DEF_DEF_\\s+\"([^\"]+)\"\\s+\"?([^\"]+)\"?");
     QRegularExpression reAttributeAssignment("^BA_\\s+\"([^\"]+)\"\\s+(\\w+)\\s+(\\w+)\\s+\"?([^\"]+)\"?");
 
-    // Set  network name to file name
+    // Set network name to file name
     Network network;
     network.name = QFileInfo(filePath).fileName();
     network.baud = ""; // Set baud rate
@@ -93,8 +93,8 @@ bool DbcDataModel::importDBC(const QString& filePath) {
             QString transmitter = match.captured(4).trimmed();
             message.priority = 0; // Initialize priority
 
-            // Add to Node-Network Assocation
-            if(!nodeMap.contains(transmitter)) {
+            // Add to Node-Network Association
+            if (!nodeMap.contains(transmitter)) {
                 qWarning() << "Transmitter node not found: " << transmitter << ". Creating new node.";
                 Node newNode;
                 newNode.name = transmitter;
@@ -110,8 +110,8 @@ bool DbcDataModel::importDBC(const QString& filePath) {
             }
 
             Node& transmitterNode = m_nodes[nodeMap[transmitter]];
-            for(NodeNetworkAssociation& networkAssociation : transmitterNode.networks) {
-                if(networkAssociation.networkName == network.name) {
+            for (NodeNetworkAssociation& networkAssociation : transmitterNode.networks) {
+                if (networkAssociation.networkName == network.name) {
                     // Check if the message already exists in the tx list
                     bool messageExistsInTx = false;
                     for (const TxRxMessage& txMsg : networkAssociation.tx) {
@@ -181,7 +181,6 @@ bool DbcDataModel::importDBC(const QString& filePath) {
                 }
             }
 
-
             // Parse all receiver names
             for (const QString& receiverName : receiverNames) {
                 QString trimmedReceiverName = receiverName.trimmed();
@@ -189,8 +188,8 @@ bool DbcDataModel::importDBC(const QString& filePath) {
                     qWarning() << "Receiver Names Empty";
                     continue;
                 }
-                // Add to Node-Network Assocation
-                if(!nodeMap.contains(trimmedReceiverName)) {
+                // Add to Node-Network Association
+                if (!nodeMap.contains(trimmedReceiverName)) {
                     qWarning() << "Receiver node not found: " << trimmedReceiverName;
                     // Create a new node and add it to m_nodes and nodeMap
                     Node node;
@@ -205,8 +204,8 @@ bool DbcDataModel::importDBC(const QString& filePath) {
                     nodeMap.insert(node.name, m_nodes.size() - 1);
                 }
                 Node& receiverNode = m_nodes[nodeMap[trimmedReceiverName]];
-                for(NodeNetworkAssociation& networkAssociation : receiverNode.networks) {
-                    if(networkAssociation.networkName == network.name) {
+                for (NodeNetworkAssociation& networkAssociation : receiverNode.networks) {
+                    if (networkAssociation.networkName == network.name) {
                         // Check if the message already exists in the rx list
                         bool messageExistsInRx = false;
                         for (const TxRxMessage& rxMsg : networkAssociation.rx) {
@@ -296,7 +295,6 @@ bool DbcDataModel::importDBC(const QString& filePath) {
             attribute.name = attributeName;
             attribute.value = value;
 
-
             // Replace existing attribute value if already present
             if (targetType == "BO_") {
                 // Replace attribute in Message
@@ -321,27 +319,23 @@ bool DbcDataModel::importDBC(const QString& filePath) {
             } else if (targetType == "SG_") {
                 // Replace attribute in Signal
                 for (auto& message : m_messages) {
-                    // Find message
-                    for (auto& message : m_messages) {
-                        QString pgnString = QString::number(message.pgn);
-                        if (pgnString == targetName) {
-                            // for each signal in that message
-                            for (auto& signal : message.messageSignals) {
-                                bool found = false;
-                                // for each attribute in the signal
-                                for (auto& sigAttr : signal.signalAttributes) {
-                                    if (sigAttr.name == attributeName) {
-                                        sigAttr.value = value; // Replace the value
-                                        found = true;
-                                        break;
-                                    }
+                    QString pgnString = QString::number(message.pgn);
+                    if (pgnString == targetName) {
+                        // For each signal in that message
+                        for (auto& signal : message.messageSignals) {
+                            bool found = false;
+                            // For each attribute in the signal
+                            for (auto& sigAttr : signal.signalAttributes) {
+                                if (sigAttr.name == attributeName) {
+                                    sigAttr.value = value; // Replace the value
+                                    found = true;
+                                    break;
                                 }
-                                if (!found) {
-                                    signal.signalAttributes.append(attribute); // Append if not found
-                                }
-                                break;
                             }
-
+                            if (!found) {
+                                signal.signalAttributes.append(attribute); // Append if not found
+                            }
+                            break;
                         }
                     }
                 }
@@ -368,9 +362,54 @@ bool DbcDataModel::importDBC(const QString& filePath) {
         }
     }
 
+    // Close the file
     file.close();
+
+    // Add sorting code here
+
+    // Sort m_networks alphabetically by name
+    std::sort(m_networks.begin(), m_networks.end(), [](const Network& a, const Network& b) {
+        return a.name.toLower() < b.name.toLower();
+    });
+
+    // Sort m_nodes alphabetically by name
+    std::sort(m_nodes.begin(), m_nodes.end(), [](Node& a, Node& b) {
+        return a.name.toLower() < b.name.toLower();
+    });
+
+    // For each node, sort node.networks alphabetically by networkName
+    for (Node& node : m_nodes) {
+        std::sort(node.networks.begin(), node.networks.end(), [](NodeNetworkAssociation& a, NodeNetworkAssociation& b) {
+            return a.networkName.toLower() < b.networkName.toLower();
+        });
+
+        // Sort tx and rx messages
+        for (NodeNetworkAssociation& nodeNetwork : node.networks) {
+            std::sort(nodeNetwork.tx.begin(), nodeNetwork.tx.end(), [](const TxRxMessage& a, const TxRxMessage& b) {
+                return a.name.toLower() < b.name.toLower();
+            });
+
+            std::sort(nodeNetwork.rx.begin(), nodeNetwork.rx.end(), [](const TxRxMessage& a, const TxRxMessage& b) {
+                return a.name.toLower() < b.name.toLower();
+            });
+        }
+    }
+
+    // Sort m_messages alphabetically by name
+    std::sort(m_messages.begin(), m_messages.end(), [](Message& a, Message& b) {
+        return a.name.toLower() < b.name.toLower();
+    });
+
+    // For each message, sort messageSignals alphabetically by name
+    for (Message& message : m_messages) {
+        std::sort(message.messageSignals.begin(), message.messageSignals.end(), [](Signal& a, Signal& b) {
+            return a.name.toLower() < b.name.toLower();
+        });
+    }
+
     return true;
 }
+
 
 bool DbcDataModel::loadJson(const QString& filePath) {
     QFile file(filePath);
