@@ -51,20 +51,40 @@ private slots:
     void onMessageAttributesTableCellChanged(int row, int column);
     void onSignalAttributesTableCellChanged(int row, int column);
 
+    // Recent Files
+    void openRecentSave(QAction *action);
+    void openRecentImport(QAction *action);
+
 private:
     Ui::MainWindow *ui;
     QList<DbcDataModel*> dbcModels;
     DbcTree* dbcTree;
 
-    void addAttributeRow(QTableWidget *table, const QStringList &rowData);
-    void updateDbcTree();
-    void saveAsJson(const QString& filePath);
+    // UI operations
     void setupRightPanel();
     void clearRightPanel();
     void displayBitLayout(Message &message, int selectedMultiplexer);
+    void addAttributeRow(QTableWidget *table, const QStringList &rowData);
+    void updateDbcTree();
 
-    // Current File
+    // File operations
+    void openJsonFile(const QString &filePath);
+    void importDBCFile(const QString &filePath);
+    void saveAsJson(const QString& filePath);
+
+    // Current Files
     QString saveFilePath;
+
+    // Recent Files
+    QMenu *recentSavesMenu;
+    QMenu *recentImportsMenu;
+    QStringList recentSaves;
+    QStringList recentImports;
+    static const int MAX_RECENT_FILES = 5;
+    void updateRecentSavesMenu();
+    void updateRecentImportsMenu();
+    void addRecentSave(const QString &filePath);
+    void addRecentImport(const QString &filePath);
 
     // Left and Right Tab Splitter
     QSplitter *splitter;

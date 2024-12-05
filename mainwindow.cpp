@@ -75,21 +75,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
             QString selectedDir = fileInfo.absolutePath();
             settings.setValue("lastWorkingDir", selectedDir);
 
-            // Load the JSON file into the data model
-            DbcDataModel* newModel = new DbcDataModel();
-            newModel->setFileName(fileInfo.fileName());
-            if (newModel->loadJson(selectedFile)) {
-                saveFilePath = selectedFile;
-                qDeleteAll(dbcModels);
-                dbcModels.clear();
-                dbcModels.append(newModel);
-                updateDbcTree();
-            } else {
-                QMessageBox::warning(this, "Import Error", "Failed to import JSON file.");
-                delete newModel;
-            }
+            openJsonFile(selectedFile);
         }
     });
+
+    // Create Recent Saves menu
+    recentSavesMenu = new QMenu("Recent Files...", this);
+    fileMenu->addMenu(recentSavesMenu);
+    connect(recentSavesMenu, &QMenu::triggered, this, &MainWindow::openRecentSave);
 
     // Import DBC
     QAction *importDBC = new QAction("Import DBC...", this);
@@ -111,19 +104,23 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
             QString selectedDir = fileInfo.absolutePath();
             settings.setValue("lastWorkingDir", selectedDir);
 
-            // Import the DBC file into the data model
-            DbcDataModel* newModel = new DbcDataModel();
-            newModel->setFileName(fileInfo.fileName());
-
-            if (newModel->importDBC(selectedFile)) { // Pass the selected DBC file path
-                dbcModels.append(newModel);
-                updateDbcTree();
-            } else {
-                QMessageBox::warning(this, "Import Error", "Failed to import DBC file.");
-                delete newModel;
-            }
+            importDBCFile(selectedFile);
         }
     });
+    // Create Recent Imports menu
+    recentImportsMenu = new QMenu("Recent Imports...", this);
+    fileMenu->addMenu(recentImportsMenu);
+    connect(recentImportsMenu, &QMenu::triggered, this, &MainWindow::openRecentImport);
+
+
+    // Retrieve recent files from settings
+    QSettings settings("Oshkosh", "HeavyInsight");
+    recentSaves = settings.value("recentSaves").toStringList();
+    recentImports = settings.value("recentImports").toStringList();
+
+    // Update recent files menus
+    updateRecentSavesMenu();
+    updateRecentImportsMenu();
 
     // Export DBC
     QAction *exportDBC = new QAction("Export DBC...", this);
@@ -162,7 +159,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect(saveAs, &QAction::triggered, this, [this]() {
         QString defaultPath;
         if(saveFilePath.isNull() || saveFilePath.isEmpty()) {
-            defaultPath = QDir::current().filePath("JSON/DbcData.json");
+            defaultPath = QDir::current().filePath("Saves/DbcData.json");
         } else {
             defaultPath = saveFilePath;
         }
@@ -218,13 +215,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         }
     });
 
-    // Edit Actions
-    QAction *undoAction = new QAction("Undo", this);
-    QAction *redoAction = new QAction("Redo", this);
-    // TODO: Take snapshots of the data before and after any change so that the user can undo or redo
-    editMenu->addAction(undoAction);
-    editMenu->addAction(redoAction);
-
     // View Menu
     QMenu *viewMenu = menuBar->addMenu("View");
 
@@ -271,6 +261,139 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     mainLayout->addWidget(splitter);
     centralWidget->setLayout(mainLayout);
 }
+
+
+void MainWindow::addRecentSave(const QString &filePath)
+{
+    recentSaves.removeAll(filePath);
+    recentSaves.prepend(filePath);
+    while (recentSaves.size() > MAX_RECENT_FILES)
+        recentSaves.removeLast();
+
+    QSettings settings("Oshkosh", "HeavyInsight");
+    settings.setValue("recentSaves", recentSaves);
+
+    updateRecentSavesMenu();
+}
+
+void MainWindow::addRecentImport(const QString &filePath)
+{
+    recentImports.removeAll(filePath);
+    recentImports.prepend(filePath);
+    while (recentImports.size() > MAX_RECENT_FILES)
+        recentImports.removeLast();
+
+    QSettings settings("Oshkosh", "HeavyInsight");
+    settings.setValue("recentImports", recentImports);
+
+    updateRecentImportsMenu();
+}
+
+
+
+void MainWindow::updateRecentSavesMenu()
+{
+    recentSavesMenu->clear();
+
+    for (int i = 0; i < recentSaves.size() && i < MAX_RECENT_FILES; ++i) {
+        QString filePath = recentSaves.at(i);
+        QString fileName = QFileInfo(filePath).fileName();
+
+        QAction *action = new QAction(fileName, this);
+        action->setData(filePath);
+        recentSavesMenu->addAction(action);
+    }
+}
+
+void MainWindow::updateRecentImportsMenu()
+{
+    recentImportsMenu->clear();
+
+    for (int i = 0; i < recentImports.size() && i < MAX_RECENT_FILES; ++i) {
+        QString filePath = recentImports.at(i);
+        QString fileName = QFileInfo(filePath).fileName();
+
+        QAction *action = new QAction(fileName, this);
+        action->setData(filePath);
+        recentImportsMenu->addAction(action);
+    }
+}
+
+void MainWindow::openRecentSave(QAction *action)
+{
+    QString filePath = action->data().toString();
+    QFileInfo fileInfo(filePath);
+    if (fileInfo.exists() && fileInfo.isFile()) {
+        openJsonFile(filePath);
+    } else {
+        QMessageBox::warning(this, "File Not Found", "The file '" + filePath + "' could not be found.");
+        recentSaves.removeAll(filePath);
+
+        QSettings settings("Oshkosh", "HeavyInsight");
+        settings.setValue("recentSaves", recentSaves);
+
+        updateRecentSavesMenu();
+    }
+}
+
+void MainWindow::openRecentImport(QAction *action)
+{
+    QString filePath = action->data().toString();
+    QFileInfo fileInfo(filePath);
+    if (fileInfo.exists() && fileInfo.isFile()) {
+        importDBCFile(filePath);
+    } else {
+        QMessageBox::warning(this, "File Not Found", "The file '" + filePath + "' could not be found.");
+        recentImports.removeAll(filePath);
+
+        QSettings settings("Oshkosh", "HeavyInsight");
+        settings.setValue("recentImports", recentImports);
+
+        updateRecentImportsMenu();
+    }
+}
+
+void MainWindow::openJsonFile(const QString &filePath)
+{
+    if (!filePath.isEmpty()) {
+        // Load the JSON file into the data model
+        DbcDataModel* newModel = new DbcDataModel();
+        newModel->setFileName(QFileInfo(filePath).fileName());
+        if (newModel->loadJson(filePath)) {
+            saveFilePath = filePath;
+            qDeleteAll(dbcModels);
+            dbcModels.clear();
+            dbcModels.append(newModel);
+            updateDbcTree();
+
+            addRecentSave(filePath);
+        } else {
+            QMessageBox::warning(this, "Import Error", "Failed to import JSON file.");
+            delete newModel;
+        }
+    }
+}
+
+void MainWindow::importDBCFile(const QString &filePath)
+{
+    if (!filePath.isEmpty()) {
+        // Import the DBC file into the data model
+        DbcDataModel* newModel = new DbcDataModel();
+        newModel->setFileName(QFileInfo(filePath).fileName());
+
+        if (newModel->importDBC(filePath)) {
+            dbcModels.append(newModel);
+            updateDbcTree();
+
+            addRecentImport(filePath);
+        } else {
+            QMessageBox::warning(this, "Import Error", "Failed to import DBC file.");
+            delete newModel;
+        }
+    }
+}
+
+
 
 
 // Helper function to add a row to the attributes table
@@ -437,7 +560,7 @@ void MainWindow::saveAsJson(const QString& filePath) {
     }
     file.write(doc.toJson(QJsonDocument::Indented));
     file.close();
-
+    addRecentSave(filePath);
     qDebug() << "Data successfully saved to" << filePath;
 }
 
