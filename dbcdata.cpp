@@ -365,8 +365,6 @@ bool DbcDataModel::importDBC(const QString& filePath) {
     // Close the file
     file.close();
 
-    // Add sorting code here
-
     // Sort m_networks alphabetically by name
     std::sort(m_networks.begin(), m_networks.end(), [](const Network& a, const Network& b) {
         return a.name.toLower() < b.name.toLower();

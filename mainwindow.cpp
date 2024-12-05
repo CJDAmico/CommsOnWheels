@@ -1560,7 +1560,9 @@ void MainWindow::setupRightPanel()
     definitionFormLayout->addRow(new QLabel("Message Attributes:"));
     messageAttributesTable->setColumnCount(3);
     messageAttributesTable->setHorizontalHeaderLabels({"Name", "Type", "Value"});
-    messageAttributesTable->horizontalHeader()->setStretchLastSection(true);
+    messageAttributesTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Interactive);       // "Name" column
+    messageAttributesTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Interactive);      // "Type" column
+    messageAttributesTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Stretch); // "Value" column
     definitionFormLayout->addRow(messageAttributeButtonsLayout);
     definitionFormLayout->addRow(messageAttributesTable);
     definitionFormLayout->addRow(new QLabel("Signals:"));
@@ -1571,6 +1573,7 @@ void MainWindow::setupRightPanel()
     transmittersTable->setColumnCount(2);
     transmittersTable->setHorizontalHeaderLabels({"Name", "Address"});
     transmittersTable->horizontalHeader()->setStretchLastSection(true);
+    transmittersTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Interactive);
     transmittersFormLayout->addRow(transmittersTable);
     transmittersTab->setLayout(transmittersFormLayout);
 
@@ -1578,6 +1581,7 @@ void MainWindow::setupRightPanel()
     receiversTable->setColumnCount(2);
     receiversTable->setHorizontalHeaderLabels({"Name", "Address"});
     receiversTable->horizontalHeader()->setStretchLastSection(true);
+    receiversTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Interactive);
     receiversFormLayout->addRow(receiversTable);
     receiversTab->setLayout(receiversFormLayout);
 
@@ -1592,7 +1596,9 @@ void MainWindow::setupRightPanel()
     networkFormLayout->addRow(new QLabel("Network Attributes:"));
     networkAttributesTable->setColumnCount(3);
     networkAttributesTable->setHorizontalHeaderLabels({"Name", "Type", "Value"});
-    networkAttributesTable->horizontalHeader()->setStretchLastSection(true);
+    networkAttributesTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Interactive);      // "Name" column
+    networkAttributesTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Interactive);      // "Type" column
+    networkAttributesTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Stretch); // "Value" column
     networkFormLayout->addRow(networkAttributeButtonsLayout);
     networkFormLayout->addRow(networkAttributesTable);
     networkTab->setLayout(networkFormLayout);
@@ -1600,13 +1606,17 @@ void MainWindow::setupRightPanel()
     // Node Tab
     nodeAddressTable->setColumnCount(2);
     nodeAddressTable->setHorizontalHeaderLabels({"Network Name", "Source Address"});
+    nodeAddressTable->horizontalHeader()->setStretchLastSection(true);
+    nodeAddressTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Interactive);
     nodeFormLayout->addRow("Node Name:", nodeNameLineEdit);
     nodeFormLayout->addRow(new QLabel("Node Address:"));
     nodeFormLayout->addRow(nodeAddressTable);
     nodeFormLayout->addRow(new QLabel("Node Attributes:"));
     nodeAttributesTable->setColumnCount(3);
     nodeAttributesTable->setHorizontalHeaderLabels({"Name", "Type", "Value"});
-    nodeAttributesTable->horizontalHeader()->setStretchLastSection(true);
+    nodeAttributesTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Interactive);          // "Name" column
+    nodeAttributesTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Interactive); // "Type" column
+    nodeAttributesTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Stretch); // "Value" column
     nodeFormLayout->addRow(nodeAttributeButtonsLayout);
     nodeFormLayout->addRow(nodeAttributesTable);
     nodeTab->setLayout(nodeFormLayout);
@@ -1625,13 +1635,17 @@ void MainWindow::setupRightPanel()
     signalFormLayout->addRow(new QLabel("Signal Attributes:"));
     signalAttributesTable->setColumnCount(3);
     signalAttributesTable->setHorizontalHeaderLabels({"Name", "Type", "Value"});
-    signalAttributesTable->horizontalHeader()->setStretchLastSection(true);
+    signalAttributesTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Interactive);          // "Name" column
+    signalAttributesTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Interactive); // "Type" column
+    signalAttributesTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Stretch); // "Value" column
     signalFormLayout->addRow(signalAttributeButtonsLayout);
     signalFormLayout->addRow(signalAttributesTable);
     signalFormLayout->addRow(new QLabel("Enumerations:"));
     enumerationsTable->setColumnCount(3);
     enumerationsTable->setHorizontalHeaderLabels({"Name", "Value", "Description"});
     enumerationsTable->horizontalHeader()->setStretchLastSection(true);
+    enumerationsTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Interactive);
+    enumerationsTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Interactive);
     signalFormLayout->addRow(enumerationsTable);
 
     signalTab->setLayout(signalFormLayout);
